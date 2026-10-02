@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PolandExpenses.Api/PolandExpenses.Api.csproj" />
+    <Project Path="src/PolandExpenses.Domain/PolandExpenses.Domain.csproj" />
+    <Project Path="src/PolandExpenses.Infrastructure/PolandExpenses.Infrastructure.csproj" />
+    <Project Path="src/PolandExpenses.ServiceDefaults/PolandExpenses.ServiceDefaults.csproj" />
+    <Project Path="src/PolandExpenses.UseCases/PolandExpenses.UseCases.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PolandExpenses.Domain.Tests/PolandExpenses.Domain.Tests.csproj" />
+    <Project Path="tests/PolandExpenses.UseCases.Tests/PolandExpenses.UseCases.Tests.csproj" />
+  </Folder>
+  <Project Path="PolandExpenses.AppHost/PolandExpenses.AppHost.csproj" />
+</Solution>
