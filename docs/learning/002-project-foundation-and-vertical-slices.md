@@ -94,7 +94,7 @@ This also keeps construction valid: callers cannot create a “successful” res
 
 ## Aspire and OpenTelemetry from day one
 
-The AppHost now starts the API as a resource and waits for its `/health` endpoint. `ServiceDefaults` adds service discovery, standard HTTP resilience, health checks, and OpenTelemetry instrumentation. Aspire gives us a resource graph and local dashboard before we add a database or broker.
+The AppHost starts the API as a resource and checks its `/health` endpoint. It also starts the empty Vite frontend and checks `/`; see [Learning note 003](003-react-frontend-foundation.md) for that setup. `ServiceDefaults` adds service discovery, standard HTTP resilience, health checks, and OpenTelemetry instrumentation to the API. Aspire gives us a resource graph and local dashboard before we add a database or broker.
 
 We are not adding PostgreSQL merely to prove that Aspire can run it. The first persistence-backed feature will define its schema and repository, and then the AppHost will own the database resource. This keeps each infrastructure component tied to a real learning problem.
 

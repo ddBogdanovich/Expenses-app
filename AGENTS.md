@@ -37,6 +37,7 @@ Start with a modular monolith and a framework-independent domain core. Organize 
 - `src/PolandExpenses.Api`: host configuration and dependency composition.
 - `src/PolandExpenses.ServiceDefaults`: shared Aspire health, telemetry, discovery, and resilience configuration.
 - `PolandExpenses.AppHost`: local resource orchestration.
+- `src/PolandExpenses.Web`: React and TypeScript frontend, built with Vite and styled with HeroUI v3 and Tailwind CSS v4.
 - `tests/`: tests organized by the project and behavior they validate.
 
 Use aggregate-specific repositories for writes and focused query services for read projections. Avoid generic `IRepository<T>`. Introduce contracts alongside the feature or aggregate that needs them.
@@ -61,7 +62,7 @@ Treat documentation updates as part of completing an architecture change. In the
 ## Technology and conventions
 
 - Backend: .NET 10 / ASP.NET Core; honor SDK selection in `global.json`.
-- Frontend: React with **HeroUI** as the selected UI component library. The frontend has not yet been scaffolded; use the repository's HeroUI skill when introducing it.
+- Frontend: React with TypeScript, Vite, **HeroUI v3**, and Tailwind CSS v4. Use npm and commit `package-lock.json`; use `npm ci` for reproducible installs. Use the repository's HeroUI and React skills for frontend work. The current scaffold contains only a placeholder page.
 - Aspire and OpenTelemetry are required from day one. Use the applicable repository Aspire skills when changing AppHost wiring or managing its lifecycle.
 - Persistence, messaging, and Kubernetes are planned learning areas. Add them with a feature or learning milestone that defines their purpose.
 - Respect `.editorconfig`: UTF-8, LF, four-space C# indentation, `I` interface prefix, and `Async` suffix for asynchronous methods.
@@ -81,6 +82,8 @@ dotnet format PolandExpenses.slnx --no-restore --verify-no-changes
 ```
 
 Restore when dependencies change. For code changes, build and run relevant behavior tests; check formatting when source changes. Documentation-only edits need a content and link review, not a full build. Tests should verify business rules, boundary cases, and observable behavior rather than mirror implementation details.
+
+For frontend changes, run `npm run build` and `npm run lint` from `src/PolandExpenses.Web`. The build includes strict TypeScript checks. Use `npm ci` after dependency changes or in a fresh checkout. Do not invent tests for the static placeholder; add behavior tests alongside interactive features.
 
 For AppHost or service-wiring changes, validate through Aspire from `PolandExpenses.AppHost`: start the AppHost, wait for affected resources to become healthy, and inspect relevant logs or telemetry. Use Aspire lifecycle commands rather than `dotnet run`. Stop processes started solely for verification when finished; preserve sessions the user wants running. Report what passed and any checks that could not run.
 

@@ -13,4 +13,8 @@
     <ProjectReference Include="..\src\PolandExpenses.Api\PolandExpenses.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+  </ItemGroup>
+
 </Project>

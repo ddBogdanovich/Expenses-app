@@ -32,3 +32,8 @@ dotnet_diagnostic.S4261.severity = warning
 indent_style = space
 indent_size = 2
 tab_width = 2
+
+[*.{ts,tsx,js,jsx,mjs,css,html}]
+indent_style = space
+indent_size = 2
+tab_width = 2

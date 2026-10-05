@@ -6,4 +6,7 @@ obj/
 *.suo
 TestResults/
 coverage/
-
+node_modules/
+dist/
+*.tsbuildinfo
+*.local
