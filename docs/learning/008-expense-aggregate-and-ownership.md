@@ -34,7 +34,7 @@ See [EF value conversion](https://learn.microsoft.com/en-us/ef/core/modeling/val
 
 ## Tests and exercises
 
-`tests/PolandExpenses.Api.Tests/ExpenseTests.cs` checks CRUD, required and invalid inputs, two-user isolation, owner-field spoofing, backdating, and persistence across real API hosts using disposable PostgreSQL and production migrations. Domain tests exercise identity, positive Money, future dates, and rejected updates without a database. No tests are skipped or replaced with production stubs.
+`tests/PocketLedger.Api.Tests/ExpenseTests.cs` checks CRUD, required and invalid inputs, two-user isolation, owner-field spoofing, backdating, and persistence across real API hosts using disposable PostgreSQL and production migrations. Domain tests exercise identity, positive Money, future dates, and rejected updates without a database. No tests are skipped or replaced with production stubs.
 
 Run the repository's build, test, and format commands. API tests require Docker. New schema migrations run automatically in Development and Testing only; other environments require reviewed SQL. No new package or deployable service was needed.
 

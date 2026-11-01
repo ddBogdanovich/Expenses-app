@@ -1,6 +1,6 @@
-# Poland Expenses
+# PocketLedger
 
-A personal budgeting application built to make a rolling daily allowance easy to understand and use. It is also a guided learning project for domain-driven design, React, ASP.NET Core, messaging, and Kubernetes.
+**PocketLedger** is a personal budgeting application built to make a rolling daily allowance easy to understand and use. It is also a guided learning project for domain-driven design, React, ASP.NET Core, messaging, and Kubernetes.
 
 ## Current milestone
 
@@ -12,12 +12,12 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Frontend
 
-`src/PolandExpenses.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. It currently displays a simple placeholder; budget screens and API calls are still planned.
+`src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. It currently displays a simple placeholder; budget screens and API calls are still planned.
 
 To install dependencies and verify the frontend:
 
 ```shell
-cd src/PolandExpenses.Web
+cd src/PocketLedger.Web
 npm ci
 npm run build
 npm run lint
@@ -35,7 +35,7 @@ Read [Learning note 003](docs/learning/003-react-frontend-foundation.md) for the
 ## Run the tests
 
 ```shell
-dotnet test PolandExpenses.slnx
+dotnet test PocketLedger.slnx
 ```
 
 HTTP tests require Docker and start a disposable PostgreSQL 17 container. They apply real migrations and cover API restart persistence, duplicate registration races, and bearer-token validation. They never use the developer database.
@@ -76,7 +76,7 @@ Start with [Value objects and Money](docs/learning/001-value-objects-and-money.m
 Aspire is the development composition root from the first milestone. The AppHost starts the API, the `web` frontend, and the `postgres` server with an `expenses` database. The API references and waits for `expenses`; `web` remains independent. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard.
 
 ```shell
-cd PolandExpenses.AppHost
+cd PocketLedger.AppHost
 aspire start
 ```
 
@@ -84,14 +84,14 @@ Open the dashboard URL printed by Aspire, then open the `web` resource endpoint.
 
 PostgreSQL uses a Docker volume so database contents survive `aspire stop` and subsequent starts. Its container uses the default session lifetime and stops with the AppHost. Aspire manages the local credentials and host port; use the dashboard's `expenses` connection string to connect with a database client. Do not commit credentials. A volume is not a backup.
 
-The API calls `AddPostgresPersistence` and applies versioned account and expense migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PolandExpenses` and `PolandExpenses.Web`.
+The API calls `AddPostgresPersistence` and applies versioned account and expense migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PocketLedger` and `PocketLedger.Web`.
 
 The HTTP contract is `POST /api/auth/register` (201), `POST /api/auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /api/auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters, defined centrally by `PasswordPolicy` in the authentication slice. Invalid input returns 400, invalid credentials 401, duplicate email 409.
 
 Generate reviewed deployment SQL from the repository root:
 
 ```shell
-dotnet ef migrations script --idempotent --project src/PolandExpenses.Infrastructure --output /tmp/poland-expenses-migrations.sql
+dotnet ef migrations script --idempotent --project src/PocketLedger.Infrastructure --output /tmp/pocketledger-migrations.sql
 ```
 
 The EF tool is installed separately (`dotnet tool install --global dotnet-ef --version 10.0.11`). Supply database credentials through your deployment secret mechanism when applying SQL. Development migration convenience is not a production rollout strategy. See [Learning note 004](docs/learning/004-postgresql-and-ef-core.md) for persistence concepts and [Learning note 006](docs/learning/006-account-authentication.md) for authentication boundaries and limits.
@@ -115,3 +115,7 @@ Create and replace accept the same full payload:
 ```
 
 Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in Europe/Warsaw. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the validated JWT subject; JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.
+
+## Project identity
+
+The solution and project prefix is `PocketLedger`; the frontend package is `pocketledger-web`. Local PostgreSQL uses the explicitly named `pocketledger-postgres-data` Docker volume. During the rename, existing local data was copied and verified, and the original volume was retained as a fallback. The AppHost keeps its existing UserSecretsId, so saved development credentials and the signing key are reused. Tokens issued with the former default issuer/audience require signing in again. The registered checkout folder keeps its existing filesystem location. See [Learning note 009](docs/learning/009-renaming-project-identity.md) and [ADR 0008](docs/decisions/0008-pocketledger-project-identity.md).

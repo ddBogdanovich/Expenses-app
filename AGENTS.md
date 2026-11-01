@@ -1,4 +1,4 @@
-# Agent instructions for Poland Expenses
+# Agent instructions for PocketLedger
 
 ## Purpose and working style
 
@@ -31,13 +31,13 @@ Human instructions in the current conversation take precedence over these reposi
 
 Start with a modular monolith and a framework-independent domain core. Organize application behavior into vertical slices.
 
-- `src/PolandExpenses.Domain`: domain behavior, aggregates, entities, value objects, and aggregate-specific repository contracts. No ASP.NET Core, EF Core, messaging, or UI dependencies.
-- `src/PolandExpenses.UseCases`: feature folders containing their controller, request, handler, validation, response, and mapping as needed. Shared application contracts live in `Common`. Query-service contracts belong here.
-- `src/PolandExpenses.Infrastructure`: repository and query-service implementations, persistence, messaging, and external integrations.
-- `src/PolandExpenses.Api`: host configuration and dependency composition.
-- `src/PolandExpenses.ServiceDefaults`: shared Aspire health, telemetry, discovery, and resilience configuration.
-- `PolandExpenses.AppHost`: local resource orchestration.
-- `src/PolandExpenses.Web`: React and TypeScript frontend, built with Vite and styled with HeroUI v3 and Tailwind CSS v4.
+- `src/PocketLedger.Domain`: domain behavior, aggregates, entities, value objects, and aggregate-specific repository contracts. No ASP.NET Core, EF Core, messaging, or UI dependencies.
+- `src/PocketLedger.UseCases`: feature folders containing their controller, request, handler, validation, response, and mapping as needed. Shared application contracts live in `Common`. Query-service contracts belong here.
+- `src/PocketLedger.Infrastructure`: repository and query-service implementations, persistence, messaging, and external integrations.
+- `src/PocketLedger.Api`: host configuration and dependency composition.
+- `src/PocketLedger.ServiceDefaults`: shared Aspire health, telemetry, discovery, and resilience configuration.
+- `PocketLedger.AppHost`: local resource orchestration.
+- `src/PocketLedger.Web`: React and TypeScript frontend, built with Vite and styled with HeroUI v3 and Tailwind CSS v4.
 - `tests/`: tests organized by the project and behavior they validate.
 
 Use aggregate-specific repositories for writes and focused query services for read projections. Avoid generic `IRepository<T>`. Introduce contracts alongside the feature or aggregate that needs them.
@@ -67,7 +67,7 @@ Treat documentation updates as part of completing an architecture change. In the
 - Accounts: `Domain/Accounts` contains `UserAccount`, `EmailAddress`, and `IUserAccountRepository`. Authentication handlers and credential/token ports live in `UseCases/Authentication`; Infrastructure implements EF persistence, Identity password hashing, and JWT issuance/validation. Emails are trimmed and case-insensitive identities. Registration requires 12–128 password characters; login never creates accounts. Expected authentication failures use `Result` including Unauthorized.
 - Expenses: `Domain/Expenses/Expense` is a small aggregate root with immutable ownership and positive `Money`, a non-future purchase date, free-text category, optional note, and explicit allowance classification. `UseCases/Expenses` contains Create, GetById, List, Update, and Delete slices. `IExpenseRepository` owns writes; `IExpenseQueries` owns read projections. Every lookup includes the authenticated owner ID. Foreign IDs return NotFound. `ICurrentAccount` reads validated identity; `IBusinessCalendar` uses TimeProvider and Europe/Warsaw. No allowance calculation is implemented yet.
 - Routes: all backend HTTP endpoints use `/api`, including authentication (`/api/auth/...`), expenses (`/api/expenses`), and development health endpoints (`/api/health`, `/api/alive`). Keep Aspire probes and HTTP examples aligned.
-- Persistence: PostgreSQL (`postgres`, logical database `expenses`) retains a data volume and session container lifetime. The API now references and waits for `expenses`, calls `AddPostgresPersistence`, and maps accounts and expenses through EF Core 10/Npgsql. Versioned migrations are applied at API startup only in Development and Testing; other environments apply reviewed migrations separately. AppHost supplies a generated signing-key secret persisted in user secrets. Never commit real credentials or keys.
+- Persistence: PostgreSQL (`postgres`, logical database `expenses`) retains the explicitly named `pocketledger-postgres-data` volume and session container lifetime. The API now references and waits for `expenses`, calls `AddPostgresPersistence`, and maps accounts and expenses through EF Core 10/Npgsql. Versioned migrations are applied at API startup only in Development and Testing; other environments apply reviewed migrations separately. AppHost supplies a generated signing-key secret persisted in user secrets. Preserve the AppHost UserSecretsId across project renames so saved local credentials remain available. Never commit real credentials or keys.
 - API integration tests use Testcontainers PostgreSQL with real migrations and disposable data. Docker is required. Preserve coverage for restart persistence, duplicate-email races, and token validation; do not substitute an in-memory repository as proof of database behavior.
 - Messaging and Kubernetes are planned learning areas. Add them with a feature or learning milestone that defines their purpose.
 - Respect `.editorconfig`: UTF-8, LF, four-space C# indentation, `I` interface prefix, and `Async` suffix for asynchronous methods.
@@ -81,16 +81,16 @@ Treat documentation updates as part of completing an architecture change. In the
 Run commands from the repository root unless stated otherwise:
 
 ```sh
-dotnet restore PolandExpenses.slnx
-dotnet build PolandExpenses.slnx --no-restore
-dotnet test PolandExpenses.slnx --no-build
-dotnet format PolandExpenses.slnx --no-restore --verify-no-changes
+dotnet restore PocketLedger.slnx
+dotnet build PocketLedger.slnx --no-restore
+dotnet test PocketLedger.slnx --no-build
+dotnet format PocketLedger.slnx --no-restore --verify-no-changes
 ```
 
 Restore when dependencies change. For code changes, build and run relevant behavior tests; check formatting when source changes. Documentation-only edits need a content and link review, not a full build. Tests should verify business rules, boundary cases, and observable behavior rather than mirror implementation details.
 
-For frontend changes, run `npm run build` and `npm run lint` from `src/PolandExpenses.Web`. The build includes strict TypeScript checks. Use `npm ci` after dependency changes or in a fresh checkout. Do not invent tests for the static placeholder; add behavior tests alongside interactive features.
+For frontend changes, run `npm run build` and `npm run lint` from `src/PocketLedger.Web`. The build includes strict TypeScript checks. Use `npm ci` after dependency changes or in a fresh checkout. Do not invent tests for the static placeholder; add behavior tests alongside interactive features.
 
-For AppHost or service-wiring changes, validate through Aspire from `PolandExpenses.AppHost`: start the AppHost, wait for affected resources to become healthy, and inspect relevant logs or telemetry. Use Aspire lifecycle commands rather than `dotnet run`. Stop processes started solely for verification when finished; preserve sessions the user wants running. Report what passed and any checks that could not run.
+For AppHost or service-wiring changes, validate through Aspire from `PocketLedger.AppHost`: start the AppHost, wait for affected resources to become healthy, and inspect relevant logs or telemetry. Use Aspire lifecycle commands rather than `dotnet run`. Stop processes started solely for verification when finished; preserve sessions the user wants running. Report what passed and any checks that could not run.
 
 Sandbox restrictions may block local build-host pipes or Aspire's user-level state directories. Use the environment's normal escalation mechanism when needed rather than changing architecture or weakening checks to work around the sandbox.

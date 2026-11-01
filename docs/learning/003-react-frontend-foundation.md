@@ -44,3 +44,5 @@ The API already exports OpenTelemetry. The frontend currently contributes proces
 3. Why do we commit the lock file but exclude `node_modules`?
 4. How does a Vite development server differ from the production bundle?
 5. Why does a mobile-friendly browser app still need a separate decision for native iOS packaging?
+
+Project paths now use PocketLedger; see [Learning note 009](009-renaming-project-identity.md). The local database volume now has the explicit name `pocketledger-postgres-data`; stored schemas and business rules are unchanged.

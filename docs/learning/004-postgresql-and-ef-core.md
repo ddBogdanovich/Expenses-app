@@ -42,7 +42,7 @@ Aggregate-specific repositories will load and save consistency boundaries. Focus
 
 ## Data lifetime and schema lifetime
 
-Run from `PolandExpenses.AppHost` with Docker running:
+Run from `PocketLedger.AppHost` with Docker running:
 
 ```shell
 aspire start
@@ -75,3 +75,5 @@ SQLite would avoid the server/container dependency. PostgreSQL gives us a realis
 - [Npgsql EF Core provider](https://www.npgsql.org/efcore/)
 - [EF Core context lifetime and configuration](https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/)
 - [ADR 0004](../decisions/0004-postgresql-and-ef-core.md)
+
+Project paths now use PocketLedger; see [Learning note 009](009-renaming-project-identity.md). The local database volume now has the explicit name `pocketledger-postgres-data`; stored schemas and business rules are unchanged.

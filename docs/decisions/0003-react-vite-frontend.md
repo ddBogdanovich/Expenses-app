@@ -9,7 +9,7 @@ The application needs a simple mobile-friendly browser UI backed by the existing
 
 ## Decision
 
-Create `src/PolandExpenses.Web` as a React single-page application with TypeScript and Vite. Install HeroUI v3 and Tailwind CSS v4, importing Tailwind before HeroUI styles. Use npm with a committed lock file and `npm ci` for repeatable installation. Retain the scaffold's Oxlint configuration and strict TypeScript checks.
+Create `src/PocketLedger.Web` as a React single-page application with TypeScript and Vite. Install HeroUI v3 and Tailwind CSS v4, importing Tailwind before HeroUI styles. Use npm with a committed lock file and `npm ci` for repeatable installation. Retain the scaffold's Oxlint configuration and strict TypeScript checks.
 
 The Aspire AppHost uses `Aspire.Hosting.JavaScript` and `AddViteApp` to start a `web` resource. Aspire owns its development port and checks `/` for readiness. The resource is independent of the API until a use case needs an API request.
 

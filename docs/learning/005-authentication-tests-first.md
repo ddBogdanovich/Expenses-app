@@ -2,7 +2,7 @@
 
 Historical red milestone: Feature 1 started with executable HTTP acceptance criteria, before authentication was implemented. TDD means red (a test fails for missing behavior), green (implement that behavior), then refactor while preserving behavior.
 
-`tests/PolandExpenses.Api.Tests/AuthenticationTests.cs` starts the actual API with `WebApplicationFactory<Program>` and sends JSON HTTP requests. It does not mock handlers or create pretend authentication endpoints. The suite now uses Testcontainers PostgreSQL and real migrations; an API restart scenario proves persistence across hosts. It remains API integration coverage rather than browser automation.
+`tests/PocketLedger.Api.Tests/AuthenticationTests.cs` starts the actual API with `WebApplicationFactory<Program>` and sends JSON HTTP requests. It does not mock handlers or create pretend authentication endpoints. The suite now uses Testcontainers PostgreSQL and real migrations; an API restart scenario proves persistence across hosts. It remains API integration coverage rather than browser automation.
 
 ## HTTP contract (now implemented)
 
@@ -23,7 +23,7 @@ A JWT is a signed token carrying claims. Tests check three segments, a declared 
 ## Run and interpret
 
 ```shell
-dotnet test tests/PolandExpenses.Api.Tests/PolandExpenses.Api.Tests.csproj
+dotnet test tests/PocketLedger.Api.Tests/PocketLedger.Api.Tests.csproj
 ```
 
 At the original red milestone the API had no authentication endpoints: these tests compiled and failed with HTTP 404 versus the required statuses. Do not skip them or add stub endpoints just to turn them green. Existing domain and use-case tests should remain green.
@@ -36,7 +36,7 @@ Reference: [ASP.NET Core integration testing](https://learn.microsoft.com/en-us/
 
 ## Historical verification of the red milestone
 
-At that stage, the API test project built with zero warnings/errors. All 15 new cases failed at missing routes; a registration run confirms expected 201 versus actual 404. Existing tests pass (6 domain, 3 use-case). `dotnet format PolandExpenses.slnx --no-restore --verify-no-changes` succeeds, with a workspace-loading warning.
+At that stage, the API test project built with zero warnings/errors. All 15 new cases failed at missing routes; a registration run confirms expected 201 versus actual 404. Existing tests pass (6 domain, 3 use-case). `dotnet format PocketLedger.slnx --no-restore --verify-no-changes` succeeds, with a workspace-loading warning.
 
 At that stage, solution-wide restore was blocked by NU1902 in the existing AppHost dependency graph (`MessagePack` 2.5.302, advisory GHSA-qhrr-8q5h-9q3h). Full solution build/test verification was therefore incomplete; no dependency-audit setting was weakened. API and existing test projects were verified separately.
 

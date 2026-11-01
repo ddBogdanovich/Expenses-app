@@ -40,7 +40,7 @@ Correcting an expense does not create a conceptually interchangeable expense jus
 
 ## Why `Money` is implemented this way
 
-[`Money.cs`](../../src/PolandExpenses.Domain/Money.cs) is a `readonly record struct`:
+[`Money.cs`](../../src/PocketLedger.Domain/Money.cs) is a `readonly record struct`:
 
 - `record` supplies value-based equality.
 - `readonly` prevents mutation after construction.
