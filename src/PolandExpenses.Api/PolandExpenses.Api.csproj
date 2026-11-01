@@ -12,4 +12,8 @@
     <ProjectReference Include="..\PolandExpenses.UseCases\PolandExpenses.UseCases.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="PolandExpenses.Api.Tests" />
+  </ItemGroup>
+
 </Project>

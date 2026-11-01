@@ -19,6 +19,7 @@ public static class ResultHttpExtensions
         {
             UseCaseErrorType.Validation => StatusCodes.Status400BadRequest,
             UseCaseErrorType.NotFound => StatusCodes.Status404NotFound,
+            UseCaseErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
             UseCaseErrorType.Conflict => StatusCodes.Status409Conflict,
             _ => throw new ArgumentOutOfRangeException(nameof(result), error.Type, "Unknown error type.")
         };

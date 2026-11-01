@@ -4,7 +4,8 @@ public enum UseCaseErrorType
 {
     Validation,
     NotFound,
-    Conflict
+    Conflict,
+    Unauthorized
 }
 
 public sealed record UseCaseError
