@@ -1,6 +1,6 @@
 # ADR 0006: Controllers within vertical slices and named policy values
 
-- Status: Accepted
+- Status: Accepted; route paths superseded by [ADR 0007](0007-expense-aggregate-and-api-prefix.md).
 - Date: 2026-11-01
 - Supersedes the `IEndpoint` / minimal API mechanism in [ADR 0002](0002-clean-domain-with-vertical-use-cases.md) and [ADR 0005](0005-account-authentication.md). All other DDD and module boundaries remain in effect.
 

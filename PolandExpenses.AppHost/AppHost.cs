@@ -12,7 +12,7 @@ builder.AddProject<Projects.PolandExpenses_Api>("api")
     .WithReference(database)
     .WaitFor(database)
     .WithEnvironment("Jwt__SigningKey", signingKey)
-    .WithHttpHealthCheck("/health")
+    .WithHttpHealthCheck("/api/health")
     .WithExternalHttpEndpoints();
 
 builder.AddViteApp("web", "../src/PolandExpenses.Web")

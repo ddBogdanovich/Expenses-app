@@ -20,7 +20,7 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var application = database.CreateApplication();
         using var client = application.CreateClient();
 
-        using var response = await client.PostAsJsonAsync("/auth/register", Credentials(NewEmail())).ConfigureAwait(true);
+        using var response = await client.PostAsJsonAsync("/api/auth/register", Credentials(NewEmail())).ConfigureAwait(true);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         await AssertJwtAsync(response).ConfigureAwait(true);
@@ -32,11 +32,11 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var application = database.CreateApplication();
         using var registrationClient = application.CreateClient();
         var credentials = Credentials(NewEmail());
-        using var registration = await registrationClient.PostAsJsonAsync("/auth/register", credentials).ConfigureAwait(true);
+        using var registration = await registrationClient.PostAsJsonAsync("/api/auth/register", credentials).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
         using var loginClient = application.CreateClient();
 
-        using var login = await loginClient.PostAsJsonAsync("/auth/login", credentials).ConfigureAwait(true);
+        using var login = await loginClient.PostAsJsonAsync("/api/auth/login", credentials).ConfigureAwait(true);
 
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         await AssertJwtAsync(login).ConfigureAwait(true);
@@ -49,10 +49,10 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var client = application.CreateClient();
         var credentials = Credentials(NewEmail());
 
-        using var login = await client.PostAsJsonAsync("/auth/login", credentials).ConfigureAwait(true);
+        using var login = await client.PostAsJsonAsync("/api/auth/login", credentials).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
         await AssertNoTokenAsync(login).ConfigureAwait(true);
-        using var registration = await client.PostAsJsonAsync("/auth/register", credentials).ConfigureAwait(true);
+        using var registration = await client.PostAsJsonAsync("/api/auth/register", credentials).ConfigureAwait(true);
 
         Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
         await AssertJwtAsync(registration).ConfigureAwait(true);
@@ -64,14 +64,14 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var application = database.CreateApplication();
         using var client = application.CreateClient();
         var email = NewEmail();
-        using var registration = await client.PostAsJsonAsync("/auth/register", Credentials(email)).ConfigureAwait(true);
+        using var registration = await client.PostAsJsonAsync("/api/auth/register", Credentials(email)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
 
-        using var rejected = await client.PostAsJsonAsync("/auth/login", new { email, password = "Wrong-password!42" }).ConfigureAwait(true);
+        using var rejected = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Wrong-password!42" }).ConfigureAwait(true);
 
         Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
         await AssertNoTokenAsync(rejected).ConfigureAwait(true);
-        using var accepted = await client.PostAsJsonAsync("/auth/login", Credentials(email)).ConfigureAwait(true);
+        using var accepted = await client.PostAsJsonAsync("/api/auth/login", Credentials(email)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
         await AssertJwtAsync(accepted).ConfigureAwait(true);
     }
@@ -82,29 +82,29 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var application = database.CreateApplication();
         using var client = application.CreateClient();
         var email = NewEmail();
-        using var first = await client.PostAsJsonAsync("/auth/register", Credentials(email)).ConfigureAwait(true);
+        using var first = await client.PostAsJsonAsync("/api/auth/register", Credentials(email)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
-        using var duplicate = await client.PostAsJsonAsync("/auth/register", new { email, password = "Replacement!42" }).ConfigureAwait(true);
+        using var duplicate = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Replacement!42" }).ConfigureAwait(true);
 
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
         await AssertNoTokenAsync(duplicate).ConfigureAwait(true);
-        using var login = await client.PostAsJsonAsync("/auth/login", Credentials(email)).ConfigureAwait(true);
+        using var login = await client.PostAsJsonAsync("/api/auth/login", Credentials(email)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         await AssertJwtAsync(login).ConfigureAwait(true);
     }
 
     [Theory]
-    [InlineData("/auth/register", "not-an-email", Password)]
-    [InlineData("/auth/register", "", Password)]
-    [InlineData("/auth/register", null, Password)]
-    [InlineData("/auth/register", "valid@example.com", "")]
-    [InlineData("/auth/register", "valid@example.com", null)]
-    [InlineData("/auth/login", "not-an-email", Password)]
-    [InlineData("/auth/login", "", Password)]
-    [InlineData("/auth/login", null, Password)]
-    [InlineData("/auth/login", "valid@example.com", "")]
-    [InlineData("/auth/login", "valid@example.com", null)]
+    [InlineData("/api/auth/register", "not-an-email", Password)]
+    [InlineData("/api/auth/register", "", Password)]
+    [InlineData("/api/auth/register", null, Password)]
+    [InlineData("/api/auth/register", "valid@example.com", "")]
+    [InlineData("/api/auth/register", "valid@example.com", null)]
+    [InlineData("/api/auth/login", "not-an-email", Password)]
+    [InlineData("/api/auth/login", "", Password)]
+    [InlineData("/api/auth/login", null, Password)]
+    [InlineData("/api/auth/login", "valid@example.com", "")]
+    [InlineData("/api/auth/login", "valid@example.com", null)]
     public async Task InvalidCredentialsAreRejectedAsync(string route, string? email, string? password)
     {
         using var application = database.CreateApplication();
@@ -124,20 +124,20 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using (var firstHost = database.CreateApplication())
         using (var client = firstHost.CreateClient())
         {
-            using var registration = await client.PostAsJsonAsync("/auth/register", credentials).ConfigureAwait(true);
+            using var registration = await client.PostAsJsonAsync("/api/auth/register", credentials).ConfigureAwait(true);
             Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
             registeredToken = await ReadTokenAsync(registration).ConfigureAwait(true);
         }
 
         using var secondHost = database.CreateApplication();
         using var loginClient = secondHost.CreateClient();
-        using var login = await loginClient.PostAsJsonAsync("/auth/login", credentials).ConfigureAwait(true);
+        using var login = await loginClient.PostAsJsonAsync("/api/auth/login", credentials).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var loginToken = await ReadTokenAsync(login).ConfigureAwait(true);
         var reader = new JwtSecurityTokenHandler();
         Assert.Equal(reader.ReadJwtToken(registeredToken).Subject, reader.ReadJwtToken(loginToken).Subject);
         loginClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginToken);
-        using var identity = await loginClient.GetAsync(new Uri("/auth/me", UriKind.Relative)).ConfigureAwait(true);
+        using var identity = await loginClient.GetAsync(new Uri("/api/auth/me", UriKind.Relative)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.OK, identity.StatusCode);
         var body = await identity.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(true);
         Assert.Equal(reader.ReadJwtToken(loginToken).Subject, body.GetProperty("accountId").GetString());
@@ -168,7 +168,7 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", new JwtSecurityTokenHandler().WriteToken(token));
         }
 
-        using var response = await client.GetAsync(new Uri("/auth/me", UriKind.Relative)).ConfigureAwait(true);
+        using var response = await client.GetAsync(new Uri("/api/auth/me", UriKind.Relative)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -179,8 +179,8 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         using var client = application.CreateClient();
         var email = NewEmail();
         var responses = await Task.WhenAll(
-            client.PostAsJsonAsync("/auth/register", Credentials(email)),
-            client.PostAsJsonAsync("/auth/register", Credentials(email.ToUpperInvariant()))).ConfigureAwait(true);
+            client.PostAsJsonAsync("/api/auth/register", Credentials(email)),
+            client.PostAsJsonAsync("/api/auth/register", Credentials(email.ToUpperInvariant()))).ConfigureAwait(true);
         try
         {
             Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Created);
@@ -204,7 +204,7 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
     {
         using var application = database.CreateApplication();
         using var client = application.CreateClient();
-        using var response = await client.PostAsJsonAsync("/auth/register", new
+        using var response = await client.PostAsJsonAsync("/api/auth/register", new
         {
             email = NewEmail(),
             password = new string('a', passwordLength)
@@ -225,8 +225,8 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
     }
 
     [Theory]
-    [InlineData("/auth/register")]
-    [InlineData("/auth/login")]
+    [InlineData("/api/auth/register")]
+    [InlineData("/api/auth/login")]
     public async Task MalformedJsonIsRejectedByTheControllerPipelineAsync(string route)
     {
         using var application = database.CreateApplication();

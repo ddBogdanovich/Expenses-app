@@ -6,7 +6,7 @@ namespace PolandExpenses.UseCases.Authentication.CurrentAccount;
 
 /// <summary>Exposes the account subject validated by bearer authentication.</summary>
 [ApiController]
-[Route("auth/me")]
+[Route("api/auth/me")]
 [Authorize]
 public sealed class CurrentAccountController : ControllerBase
 {

@@ -12,7 +12,7 @@
 
 ```text
 AppHost
-  api -> expenses     account persistence consumer
+  api -> expenses     account and expense persistence consumer
   web                 independent application
   postgres            container + data volume
     expenses          logical database
@@ -22,17 +22,17 @@ Infrastructure
   Persistence/PersistenceServiceCollectionExtensions.cs
 ```
 
-The database is structurally a child of its server. The API now references and waits for it, calls `AddPostgresPersistence`, and maps `UserAccount` through Infrastructure. Accounts have a versioned migration; expense storage remains planned. The frontend remains independent.
+The database is structurally a child of its server. The API now references and waits for it, calls `AddPostgresPersistence`, and maps `UserAccount` and `Expense` through Infrastructure. Both have versioned migrations. The frontend remains independent.
 
 ## What a DbContext does
 
-`ExpensesDbContext` is our EF Core session. It maps accounts, executes queries, tracks changes, and persists them through `SaveChangesAsync`. The options supplied to its constructor select the provider and connection configuration; the context does not contain a password or decide where PostgreSQL runs.
+`ExpensesDbContext` is our EF Core session. It maps accounts and expenses, executes queries, tracks changes, and persists them through `SaveChangesAsync`. The options supplied to its constructor select the provider and connection configuration; the context does not contain a password or decide where PostgreSQL runs.
 
 The change tracker remembers loaded entities and detects their modifications. Saving related changes together implements the **Unit of Work** pattern: coordinate a set of changes before committing them. With a relational provider, a single `SaveChangesAsync` normally uses a transaction when required. Separate saves or external messages are not automatically one transaction.
 
 Our opt-in registration uses `AddDbContext`, whose default lifetime is **scoped**: when used in ASP.NET Core, a request normally gets its own context. A context is not thread-safe and must not be shared across concurrent operations or captured by a singleton. Background workers will need their own scopes or a context factory.
 
-The first mapped aggregate is `UserAccount`; `Expense` and `BudgetPlan` still need modeling before choosing their mappings.
+The mapped aggregates are `UserAccount` and `Expense`. Expense money maps to bigint grosz and purchase dates to PostgreSQL date. `BudgetPlan` remains planned.
 
 ## How this fits DDD
 
@@ -67,7 +67,7 @@ SQLite would avoid the server/container dependency. PostgreSQL gives us a realis
 2. What survives `aspire stop`: the context, container process, or volume data?
 3. Why should an aggregate repository use a context internally rather than expose it to the domain?
 4. Why does one context per request not automatically make every operation in that request a single transaction?
-5. For the first expense feature, sketch how signed `Money` maps to a database column while expense positivity is enforced separately.
+5. Inspect ExpenseConfiguration: how does signed `Money` map to a bigint column while expense positivity is enforced separately?
 
 ## References
 

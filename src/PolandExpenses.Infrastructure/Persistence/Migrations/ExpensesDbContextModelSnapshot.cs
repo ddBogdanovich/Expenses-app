@@ -45,6 +45,52 @@ namespace PolandExpenses.Infrastructure.Persistence.Migrations
 
                     b.ToTable("UserAccounts", (string)null);
                 });
+
+            modelBuilder.Entity("PolandExpenses.Domain.Expenses.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("AmountGrosz");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OwnerId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("PurchaseDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("QualifiesForAllowance")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "PurchaseDate");
+
+                    b.ToTable("Expenses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Expenses_PositiveAmount", "\"AmountGrosz\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("PolandExpenses.Domain.Expenses.Expense", b =>
+                {
+                    b.HasOne("PolandExpenses.Domain.Accounts.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
 #pragma warning restore 612, 618
         }
     }

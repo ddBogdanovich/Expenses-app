@@ -49,25 +49,25 @@ HTTP request
     -> infrastructure implementation
 ```
 
-The first real feature might eventually look like this:
+The expense create slice now looks like this:
 
 ```text
 UseCases/
   Expenses/
-    RecordExpense/
-      RecordExpense.Controller.cs
-      RecordExpense.Request.cs
-      RecordExpense.Handler.cs
-      RecordExpense.Validation.cs
+    Create/
+      CreateExpenseController.cs
+      CreateExpenseHandler.cs
+    Common/
+      ExpenseContracts.cs
 ```
 
-This is a shape, not a requirement to create empty folders. We will introduce it with an actual use case so every file has a reason to exist.
+Shared expense input, response mapping, errors, and query contracts live in Common. Validation delegates business invariants to the aggregate.
 
 MVC discovers controllers in the UseCases assembly through an explicit application part. Only handler implementations are scanned for scoped DI registration; controllers use constructor injection and follow MVC lifetimes. See [ADR 0006](../decisions/0006-controllers-and-named-policies.md).
 
 ## Why retain repositories for writes?
 
-An aggregate is a consistency boundary: changes inside it must preserve its invariants as one unit. An aggregate-specific repository expresses loading and saving that boundary in domain terms. For example, a future `IExpenseLedgerRepository` can expose exactly what the ledger needs without leaking EF Core query behavior across the application.
+An aggregate is a consistency boundary: changes inside it must preserve its invariants as one unit. An aggregate-specific repository expresses loading and saving that boundary in domain terms. For example, `IExpenseRepository` exposes exactly what each expense write needs without leaking EF Core query behavior across the application.
 
 A generic `IRepository<T>` often adds little beyond `DbSet<T>` and hides useful persistence capabilities. We will avoid it.
 
@@ -96,7 +96,7 @@ This also keeps construction valid: callers cannot create a “successful” res
 
 ## Aspire and OpenTelemetry from day one
 
-The AppHost starts the API as a resource and checks its `/health` endpoint. It also starts the empty Vite frontend and checks `/`; see [Learning note 003](003-react-frontend-foundation.md) for that setup. `ServiceDefaults` adds service discovery, standard HTTP resilience, health checks, and OpenTelemetry instrumentation to the API. The API now references and waits for PostgreSQL for account persistence; a broker is still planned.
+The AppHost starts the API as a resource and checks its `/api/health` endpoint. It also starts the empty Vite frontend and checks `/`; see [Learning note 003](003-react-frontend-foundation.md) for that setup. `ServiceDefaults` adds service discovery, standard HTTP resilience, health checks, and OpenTelemetry instrumentation to the API. The API now references and waits for PostgreSQL for account persistence; a broker is still planned.
 
 At the owner's request, the database and EF Core foundation precede the first persistence-backed feature. This learning step distinguishes orchestration from application persistence: Aspire owns the server and database, while Infrastructure owns the ORM. Authentication is now the first persistence-backed feature, with an account schema, migration, and repository; see [Learning note 006](006-account-authentication.md).
 

@@ -7,7 +7,7 @@ namespace PolandExpenses.UseCases.Authentication.Login;
 
 /// <summary>Adapts HTTP login requests to the feature handler.</summary>
 [ApiController]
-[Route("auth/login")]
+[Route("api/auth/login")]
 [AllowAnonymous]
 public sealed class LoginController(LoginHandler handler) : ControllerBase
 {

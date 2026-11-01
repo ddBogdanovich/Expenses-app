@@ -23,13 +23,13 @@ Password limits now live in `Authentication/Common/PasswordPolicy`; validation a
 
 Identity's password hasher stores a versioned salted verifier; it does not encrypt a password for later recovery. The domain treats it as opaque. JWT signing proves that claims came from a holder of the signing key; it does not encrypt them. Our tokens carry a subject (account ID), unique token ID, issuer, audience, and time claims, without email or password data.
 
-`GET /auth/me` requires bearer authentication and returns the validated subject. Infrastructure configures signature, HS256 algorithm, issuer, audience, and expiration checks. Parsing token JSON in a test is not signature validation; tests now send valid and invalid tokens through this protected endpoint. Tokens last 30 minutes and have zero expiry grace. UTC instants define token validity; `Europe/Warsaw` still defines budgeting dates.
+`GET /api/auth/me` requires bearer authentication and returns the validated subject. Infrastructure configures signature, HS256 algorithm, issuer, audience, and expiration checks. Parsing token JSON in a test is not signature validation; tests now send valid and invalid tokens through this protected endpoint. Tokens last 30 minutes and have zero expiry grace. UTC instants define token validity; `Europe/Warsaw` still defines budgeting dates.
 
 Aspire generates and persists the local signing secret in user secrets and injects it with the database connection. The API fails startup for missing connection/key or an undersized key; no key is committed. A restart keeps the same local key so tokens remain valid for their lifetime. Rotation, refresh, revocation, recovery, email verification, MFA, rate limiting and lockout remain future work. This module is a scoped first-party learning implementation, not a general OAuth/OIDC provider; a managed provider is an alternative with less credential lifecycle maintenance.
 
 ## Real persistence in tests
 
-`AuthenticationDatabase` owns a Testcontainers PostgreSQL 17 instance. Each scenario uses a fresh API host and unique account email where it creates data. All hosts in the fixture share that isolated database and test key. The API applies the same migrations as development; no test repository replaces real persistence. `AccountSurvivesApiRestartAsync` registers, disposes the first host, then logs in on another host and calls `/auth/me`. A memory dictionary would lose the account and fail this behavior.
+`AuthenticationDatabase` owns a Testcontainers PostgreSQL 17 instance. Each scenario uses a fresh API host and unique account email where it creates data. All hosts in the fixture share that isolated database and test key. The API applies the same migrations as development; no test repository replaces real persistence. `AccountSurvivesApiRestartAsync` registers, disposes the first host, then logs in on another host and calls `/api/auth/me`. A memory dictionary would lose the account and fail this behavior.
 
 The fixture has one narrowly scoped CA1515 suppression: xUnit v2 needs the fixture and test constructor to be public for discovery and construction. The justification lives on that type; repository-wide analyzer settings remain enabled.
 
@@ -43,7 +43,7 @@ Migrations describe schema changes, not domain rules. `CreateUserAccounts` creat
 - Trace which layer changes if we replace HS256 with an external identity provider. Which domain types should stay unchanged?
 - Explain why password policy belongs to the application credential flow while money arithmetic remains in the budgeting domain.
 - Design a rehash-on-login flow using an explicit aggregate behavior and repository operation; preserve the distinction between credential verification and account creation.
-- Before expenses become account-owned, define the authorization rule and a test proving one account cannot access another's data. A JWT alone does not enforce ownership.
+- Expense ownership is now implemented and tested; see [Learning note 008](008-expense-aggregate-and-ownership.md). A JWT alone does not enforce ownership.
 
 References: [ASP.NET Core JWT validation](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0), [Testcontainers PostgreSQL](https://dotnet.testcontainers.org/modules/postgres/), [ADR 0005](../decisions/0005-account-authentication.md).
 

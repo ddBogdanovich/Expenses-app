@@ -58,7 +58,6 @@ Assume a plan starts on 2026-09-20 with a 50.00 PLN daily allowance and zero ope
 ## Still to model
 
 - `BudgetPlan`, including start date, opening carryover, and allowance periods.
-- `Expense`, including amount, purchase date, category, note, and whether it qualifies.
 - The allowance calculation over dates, rate changes, and expense history.
 
 
@@ -66,4 +65,12 @@ Assume a plan starts on 2026-09-20 with a 50.00 PLN daily allowance and zero ope
 
 Authentication is a supporting module separate from budgeting. A `UserAccount` aggregate has a stable ID, an `EmailAddress` value object, and an opaque password verifier. Email identity is trimmed and case-insensitive (stored uppercase); PostgreSQL enforces one account per normalized email, including concurrent registration attempts. Registration creates an account; login only retrieves and verifies one. Password hashing and JWT cryptography belong to Infrastructure, not the domain.
 
-No plaintext password is stored. Registration's application-level `PasswordPolicy` accepts 12–128 characters; empty/null credentials and malformed emails are rejected. A login failure uses the same response for an unknown email and a wrong password. Access tokens expire after 30 minutes. Budget ownership and per-account expense access are not implemented yet; future aggregates will reference the account by ID rather than embedding accounts or sharing persistence models.
+No plaintext password is stored. Registration's application-level `PasswordPolicy` accepts 12–128 characters; empty/null credentials and malformed emails are rejected. A login failure uses the same response for an unknown email and a wrong password. Access tokens expire after 30 minutes. Expense ownership is implemented: each expense references its account by ID, with no embedded account or expense collection on the account aggregate. Budget plans and their ownership are still to model.
+
+## Expense aggregate boundary
+
+`Expense` is an entity and the root of its own small aggregate: one purchase is saved independently. Its ID and owner ID remain stable when purchase details change. A valid expense has a positive `Money` amount, a non-default purchase date no later than the current Warsaw date, a nonblank free-text category (trimmed on write), an optional note, and an explicit allowance classification. Food and household categories ordinarily qualify, but this backend contract requires the caller to choose the flag; no automatic category classification is implemented.
+
+`TryCreate` and `TryUpdate` enforce these invariants without depending on a clock or framework. Handlers supply today's date through `IBusinessCalendar`; invalid updates change no fields. Backdating across month/year boundaries is allowed. Expense changes are persisted, but later allowance recalculation awaits the budget feature.
+
+API ownership derives exclusively from the authenticated subject. Reads and aggregate loading filter by owner; owner ID is included in write predicates and enforced by a database foreign key. Foreign and missing expense IDs both produce 404. Category and note currently use PostgreSQL text without product-specific length limits. Read projections return only purchase fields and ID; pagination and revision history are not implemented.

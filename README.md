@@ -4,7 +4,9 @@ A personal budgeting application built to make a rolling daily allowance easy to
 
 ## Current milestone
 
-Feature 1 implements email/password registration and login with signed, 30-minute JWT access tokens. Accounts are persisted in PostgreSQL through a framework-independent DDD account aggregate and EF Core repository. The React frontend remains a placeholder; authentication screens and budget features are planned.
+Feature 2 implements backend expense CRUD for authenticated accounts, alongside registration and login with signed, 30-minute JWT access tokens. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. The React frontend remains a placeholder; allowance calculations and browser features are planned.
+
+See [the expense implementation guide](docs/learning/008-expense-aggregate-and-ownership.md) and [ADR 0007](docs/decisions/0007-expense-aggregate-and-api-prefix.md).
 
 See [authentication contracts and tests](docs/learning/005-authentication-tests-first.md), [the DDD implementation guide](docs/learning/006-account-authentication.md), and [ADR 0005](docs/decisions/0005-account-authentication.md).
 
@@ -50,7 +52,7 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 
 - `Domain` owns business language and invariants.
 - `UseCases` owns feature handlers and ASP.NET Core controllers inside each vertical slice.
-- `Infrastructure` implements account persistence with EF Core/Npgsql, password hashing, JWT signing and validation. Messaging and expense query services are planned.
+- `Infrastructure` implements account and expense persistence with EF Core/Npgsql, owner-filtered expense query projections, Warsaw business dates, password hashing, and JWT signing and validation. Messaging remains planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
 - `Web` is an independent browser frontend; Aspire starts its Vite development server alongside the API.
@@ -78,13 +80,13 @@ cd PolandExpenses.AppHost
 aspire start
 ```
 
-Open the dashboard URL printed by Aspire, then open the `web` resource endpoint. The API exposes development health endpoints at `/health` and `/alive`. Frontend API integration and browser telemetry will be introduced with a real feature.
+Open the dashboard URL printed by Aspire, then open the `web` resource endpoint. The API exposes development health endpoints at `/api/health` and `/api/alive`. Frontend API integration and browser telemetry will be introduced with a real feature.
 
 PostgreSQL uses a Docker volume so database contents survive `aspire stop` and subsequent starts. Its container uses the default session lifetime and stops with the AppHost. Aspire manages the local credentials and host port; use the dashboard's `expenses` connection string to connect with a database client. Do not commit credentials. A volume is not a backup.
 
-The API calls `AddPostgresPersistence` and applies versioned account migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PolandExpenses` and `PolandExpenses.Web`.
+The API calls `AddPostgresPersistence` and applies versioned account and expense migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PolandExpenses` and `PolandExpenses.Web`.
 
-The HTTP contract is `POST /auth/register` (201), `POST /auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters, defined centrally by `PasswordPolicy` in the authentication slice. Invalid input returns 400, invalid credentials 401, duplicate email 409.
+The HTTP contract is `POST /api/auth/register` (201), `POST /api/auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /api/auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters, defined centrally by `PasswordPolicy` in the authentication slice. Invalid input returns 400, invalid credentials 401, duplicate email 409.
 
 Generate reviewed deployment SQL from the repository root:
 
@@ -93,3 +95,23 @@ dotnet ef migrations script --idempotent --project src/PolandExpenses.Infrastruc
 ```
 
 The EF tool is installed separately (`dotnet tool install --global dotnet-ef --version 10.0.11`). Supply database credentials through your deployment secret mechanism when applying SQL. Development migration convenience is not a production rollout strategy. See [Learning note 004](docs/learning/004-postgresql-and-ef-core.md) for persistence concepts and [Learning note 006](docs/learning/006-account-authentication.md) for authentication boundaries and limits.
+
+## Expense HTTP contract
+
+All backend endpoints use the `/api` prefix. Expense routes require a bearer token:
+
+| Method | Route | Success |
+| --- | --- | --- |
+| POST | `/api/expenses` | 201, expense JSON and `Location` |
+| GET | `/api/expenses` | 200, JSON array of the caller's expenses |
+| GET | `/api/expenses/{id}` | 200, expense JSON |
+| PUT | `/api/expenses/{id}` | 200, replaced expense JSON |
+| DELETE | `/api/expenses/{id}` | 204 |
+
+Create and replace accept the same full payload:
+
+```json
+{ "amountGrosz": 3500, "purchaseDate": "2026-01-01", "category": "Food", "note": "Lunch", "qualifiesForAllowance": true }
+```
+
+Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in Europe/Warsaw. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the validated JWT subject; JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.

@@ -34,9 +34,9 @@ Value objects are a tactical DDD pattern. They help make the ubiquitous language
 | What defines equality? | Its attributes | Stable identity |
 | Does its history matter? | Usually no | Usually yes |
 | Typical update | Replace it with a new value | Change the same identified object |
-| Example in this app | `Money` | A future `Expense` |
+| Example in this app | `Money` | `Expense` |
 
-Correcting an expense does not create a conceptually interchangeable expense just because the amount and date match. The expense will have an identity and revision history, so it is an entity. Two `Money.FromZloty(50m)` values are interchangeable, so `Money` is a value object.
+Correcting an expense does not create a conceptually interchangeable expense just because the amount and date match. The expense has a stable identity, so it is an entity. Revision history is not yet implemented. Two `Money.FromZloty(50m)` values are interchangeable, so `Money` is a value object.
 
 ## Why `Money` is implemented this way
 
@@ -49,7 +49,7 @@ Correcting an expense does not create a conceptually interchangeable expense jus
 - `FromZloty` is a named conversion boundary that rejects fractional grosz.
 - Checked operators turn numeric overflow into an error instead of corrupting a balance.
 
-The type is signed because a balance can be negative. Positivity is contextual: an `Expense` amount must be positive, but `Money` itself also represents opening carryover and calculated balances. That invariant belongs to the future `Expense` model, not to every monetary value.
+The type is signed because a balance can be negative. Positivity is contextual: an `Expense` amount must be positive, but `Money` itself also represents opening carryover and calculated balances. That invariant belongs to the `Expense` model, not to every monetary value.
 
 ## Why not use `decimal` everywhere?
 

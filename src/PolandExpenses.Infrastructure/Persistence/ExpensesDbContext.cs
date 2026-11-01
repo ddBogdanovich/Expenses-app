@@ -9,5 +9,6 @@ public sealed class ExpensesDbContext(DbContextOptions<ExpensesDbContext> option
         ArgumentNullException.ThrowIfNull(modelBuilder);
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new UserAccountConfiguration());
+        modelBuilder.ApplyConfiguration(new ExpenseConfiguration());
     }
 }

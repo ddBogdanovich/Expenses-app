@@ -8,7 +8,7 @@ namespace PolandExpenses.UseCases.Authentication.Register;
 
 /// <summary>Adapts HTTP register requests to the feature handler.</summary>
 [ApiController]
-[Route("auth/register")]
+[Route("api/auth/register")]
 [AllowAnonymous]
 public sealed class RegisterController(RegisterHandler handler) : ControllerBase
 {
