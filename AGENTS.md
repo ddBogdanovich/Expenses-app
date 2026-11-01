@@ -36,7 +36,7 @@ Start with a modular monolith and a framework-independent domain core. Organize 
 - `src/PocketLedger.Infrastructure`: repository and query-service implementations, persistence, messaging, and external integrations.
 - `src/PocketLedger.Api`: host configuration and dependency composition.
 - `src/PocketLedger.ServiceDefaults`: shared Aspire health, telemetry, discovery, and resilience configuration.
-- `PocketLedger.AppHost`: local resource orchestration.
+- `PocketLedger.AppHost`: local resource orchestration, including an on-demand `tests` executable visible in the dashboard. It is registered only in run mode with WithExplicitStart and executes dotnet test using `.artifacts/tests` for isolated build outputs. API integration tests retain their own disposable databases.
 - `src/PocketLedger.Web`: React and TypeScript frontend, built with Vite and styled with HeroUI v3 and Tailwind CSS v4.
 - `tests/`: tests organized by the project and behavior they validate.
 
@@ -90,6 +90,8 @@ dotnet format PocketLedger.slnx --no-restore --verify-no-changes
 Restore when dependencies change. For code changes, build and run relevant behavior tests; check formatting when source changes. Documentation-only edits need a content and link review, not a full build. Tests should verify business rules, boundary cases, and observable behavior rather than mirror implementation details.
 
 For frontend changes, run `npm run build` and `npm run lint` from `src/PocketLedger.Web`. The build includes strict TypeScript checks. Use `npm ci` after dependency changes or in a fresh checkout. Do not invent tests for the static placeholder; add behavior tests alongside interactive features.
+
+The dashboard `tests` resource restores/builds and runs the backend suite from the repository root. Start it explicitly from the dashboard and inspect its exit code and console logs; it must remain inactive at normal AppHost startup. Its `.artifacts/tests` output tree is ignored by Git. Do not pass the development connection string or signing key to this runner.
 
 For AppHost or service-wiring changes, validate through Aspire from `PocketLedger.AppHost`: start the AppHost, wait for affected resources to become healthy, and inspect relevant logs or telemetry. Use Aspire lifecycle commands rather than `dotnet run`. Stop processes started solely for verification when finished; preserve sessions the user wants running. Report what passed and any checks that could not run.
 

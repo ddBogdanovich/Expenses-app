@@ -100,6 +100,25 @@ The AppHost starts the API as a resource and checks its `/api/health` endpoint. 
 
 At the owner's request, the database and EF Core foundation precede the first persistence-backed feature. This learning step distinguishes orchestration from application persistence: Aspire owns the server and database, while Infrastructure owns the ORM. Authentication is now the first persistence-backed feature, with an account schema, migration, and repository; see [Learning note 006](006-account-authentication.md).
 
+## Request logs and traces are different
+
+Instrumentation creates traces and timing information; it does not override ILogger category filters. The API originally set `Microsoft.AspNetCore` to Warning, which suppressed the framework's Information-level request messages before either the console or OpenTelemetry logging provider could receive them. Startup logs still arrived because their category is `Microsoft.Hosting.Lifetime`.
+
+The API's base appsettings.json now keeps the broad Warning filter and adds a more specific override:
+
+```json
+"Microsoft.AspNetCore": "Warning",
+"Microsoft.AspNetCore.Hosting.Diagnostics": "Information"
+```
+
+The more specific category wins. Development settings inherit that specific rule even though they retain the broad Warning setting. Built-in request-start and request-finish messages now reach both console output and the OpenTelemetry exporter, with status and elapsed time on completion. No custom middleware or logging package is needed. Expanding every ASP.NET Core category to Information would also reveal requests, but adds unrelated framework messages.
+
+In the Aspire dashboard, choose resource api and include Information in the Structured logs severity filter. A log's trace ID connects it to the corresponding request trace. Health-check traces are intentionally filtered in ServiceDefaults, while their framework request logs remain visible. Incoming request logs include the URL and query string; bodies and authorization headers are not part of these hosting messages. Authentication credentials belong in the existing request bodies or authorization header, never in query strings.
+
+The frontend placeholder currently serves through Vite and makes no API calls. Refreshing that page alone therefore creates no API request log. A request must reach the API itself. Configuration reload was verified on the running Development API without a restart: an unauthenticated GET to `/api/auth/me` returned the expected 401 and produced start/finish entries in both console and structured logs, with matching trace IDs and structured status/timing fields.
+
+See [ASP.NET Core logging configuration](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/logging/?view=aspnetcore-10.0#configure-logging) for category selection and provider filtering.
+
 ## Check your understanding
 
 1. Why does centralizing a package version not hide which project uses that package?
@@ -107,3 +126,5 @@ At the owner's request, the database and EF Core foundation precede the first pe
 3. Why is an aggregate repository useful for writes but often inefficient for calendar queries?
 4. Which failures belong in `Result`, and which should remain exceptions?
 5. Why is controlled contract scanning safer than registering every discovered class?
+
+The AppHost also provides a local, on-demand backend test resource; see [Learning note 010](010-aspire-dashboard-and-tests.md) for its dashboard controls and isolated outputs.

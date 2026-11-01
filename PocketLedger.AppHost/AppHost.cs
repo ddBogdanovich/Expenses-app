@@ -21,4 +21,16 @@ builder.AddViteApp("web", "../src/PocketLedger.Web")
     .WithHttpHealthCheck("/")
     .WithExternalHttpEndpoints();
 
+if (builder.ExecutionContext.IsRunMode)
+{
+    var repositoryDirectory = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, ".."));
+    var testArtifactsDirectory = Path.Combine(repositoryDirectory, ".artifacts", "tests");
+
+    // A separate output tree lets tests rebuild without replacing the running API's assemblies.
+    builder.AddExecutable("tests", "dotnet", repositoryDirectory,
+            "test", "PocketLedger.slnx", "--artifacts-path", testArtifactsDirectory,
+            "--logger", "console;verbosity=normal")
+        .WithExplicitStart();
+}
+
 await builder.Build().RunAsync().ConfigureAwait(false);

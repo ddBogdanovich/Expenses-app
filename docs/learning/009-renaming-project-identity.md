@@ -6,6 +6,8 @@ PocketLedger is the product name and .NET namespace prefix. `PocketLedger.slnx` 
 
 Aspire generates `Projects.PocketLedger_Api` from the referenced API project. The API's `InternalsVisibleTo` entry must use `PocketLedger.Api.Tests` for WebApplicationFactory to retain access to the entry point. The npm package, lockfile, browser title, and placeholder heading use PocketLedger too. Existing local IDE solution metadata was renamed without resetting preferences.
 
+An IDE session opened before the rename can still retain the old solution path in memory. In Rider this appears as a solution that failed to load and MSBuild error MSB1009 (project file does not exist). Use **File → Open → Open…**, select `PocketLedger.slnx`, and choose **This Window** to replace that stale session. Wait for the nine projects to load, then build the solution. The AppHost run configuration should now point to `PocketLedger.AppHost/PocketLedger.AppHost.csproj`. Renaming source files does not automatically switch an already-open IDE session. If background restore remains stalled after cloud-backed files are downloaded, restart Rider and let project loading finish before building. This recovery was verified in Rider: all nine projects loaded and its build succeeded with zero errors and warnings.
+
 ## Code identity and stored data differ
 
 EF's snapshot and migration designers contain fully qualified CLR entity names. Those names are updated together with the domain namespaces. Migration IDs and SQL table names are retained: an assembly rename should not recreate UserAccounts or Expenses. `dotnet ef migrations has-pending-model-changes --project src/PocketLedger.Infrastructure --no-build` checks that the renamed runtime model and snapshot still agree.
