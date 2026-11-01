@@ -43,3 +43,7 @@ Run the repository's build, test, and format commands. API tests require Docker.
 3. Why must `false` and an omitted allowance classification have different meanings?
 4. At 23:30 UTC in winter, which purchase date counts as today in Warsaw?
 5. Design a future pagination or revision-check contract before implementing it. Which existing HTTP tests would change?
+
+## Verification result
+
+The solution builds with zero warnings/errors. All 83 tests pass: 20 domain, 3 shared use-case Result tests, and 60 PostgreSQL-backed HTTP/calendar cases. This includes deterministic Warsaw dates before and after daylight saving transitions. Formatting and local documentation links pass; EF reports no pending model changes. The reviewed idempotent SQL creates only the expense table, owner/date index, positive-amount check, and account foreign key in the new migration. Aspire confirms the API and database healthy using `/api/health`; logs confirm `CreateExpenses` applied and normal API startup. The temporary verification session was stopped after inspection.
