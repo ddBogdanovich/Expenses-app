@@ -1,6 +1,6 @@
 # ADR 0005: Account authentication within the modular monolith
 
-- Status: Accepted
+- Status: Accepted; HTTP endpoint mechanism superseded by [ADR 0006](0006-controllers-and-named-policies.md).
 - Date: 2026-11-01
 - Supersedes the independent-database and empty-context phase of [ADR 0004](0004-postgresql-and-ef-core.md); retains PostgreSQL, EF Core, and the session data volume.
 

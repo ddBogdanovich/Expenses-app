@@ -195,6 +195,50 @@ public sealed class AuthenticationTests(AuthenticationDatabase database) : IClas
         }
     }
 
+    [Theory]
+    [InlineData(11, HttpStatusCode.BadRequest)]
+    [InlineData(12, HttpStatusCode.Created)]
+    [InlineData(128, HttpStatusCode.Created)]
+    [InlineData(129, HttpStatusCode.BadRequest)]
+    public async Task RegistrationEnforcesPasswordLengthBoundariesAsync(int passwordLength, HttpStatusCode expectedStatus)
+    {
+        using var application = database.CreateApplication();
+        using var client = application.CreateClient();
+        using var response = await client.PostAsJsonAsync("/auth/register", new
+        {
+            email = NewEmail(),
+            password = new string('a', passwordLength)
+        }).ConfigureAwait(true);
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+        if (expectedStatus == HttpStatusCode.Created)
+        {
+            await AssertJwtAsync(response).ConfigureAwait(true);
+        }
+        else
+        {
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+            var error = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(true);
+            Assert.Equal(passwordLength < 12 ? "auth.weak_password" : "auth.invalid_input", error.GetProperty("code").GetString());
+            await AssertNoTokenAsync(response).ConfigureAwait(true);
+        }
+    }
+
+    [Theory]
+    [InlineData("/auth/register")]
+    [InlineData("/auth/login")]
+    public async Task MalformedJsonIsRejectedByTheControllerPipelineAsync(string route)
+    {
+        using var application = database.CreateApplication();
+        using var client = application.CreateClient();
+        using var content = new StringContent("{", Encoding.UTF8, "application/json");
+
+        using var response = await client.PostAsync(new Uri(route, UriKind.Relative), content).ConfigureAwait(true);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await AssertNoTokenAsync(response).ConfigureAwait(true);
+    }
+
     private static async Task<string> ReadTokenAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(true);

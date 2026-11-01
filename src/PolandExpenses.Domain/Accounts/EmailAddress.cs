@@ -6,6 +6,9 @@ namespace PolandExpenses.Domain.Accounts;
 /// <summary>An account email, compared using the application's case-insensitive identity policy.</summary>
 public sealed record EmailAddress
 {
+    /// <summary>The supported email address length, shared with persistence mapping.</summary>
+    public const int MaximumLength = 254;
+
     private EmailAddress(string value) => Value = value;
 
     public string Value { get; }
@@ -13,7 +16,7 @@ public sealed record EmailAddress
     public static bool TryCreate(string? input, [NotNullWhen(true)] out EmailAddress? email)
     {
         email = null;
-        if (string.IsNullOrWhiteSpace(input) || input.Length > 254)
+        if (string.IsNullOrWhiteSpace(input) || input.Length > MaximumLength)
         {
             return false;
         }

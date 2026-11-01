@@ -10,7 +10,7 @@ public sealed class LoginHandler(IUserAccountRepository accounts, IPasswordServi
     public async Task<Result<TokenResponse>> HandleAsync(CredentialsRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (!EmailAddress.TryCreate(request.Email, out var email) || !AuthenticationErrors.IsPasswordValid(request.Password))
+        if (!EmailAddress.TryCreate(request.Email, out var email) || !PasswordPolicy.IsInputValid(request.Password))
         {
             return Result.Failure<TokenResponse>(AuthenticationErrors.InvalidInput);
         }

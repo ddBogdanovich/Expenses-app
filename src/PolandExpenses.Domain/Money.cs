@@ -5,6 +5,8 @@ namespace PolandExpenses.Domain;
 /// </summary>
 public readonly record struct Money
 {
+    private const decimal GroszPerZloty = 100m;
+
     public static Money Zero => new(0);
 
     public Money(long grosz)
@@ -14,11 +16,11 @@ public readonly record struct Money
 
     public long Grosz { get; }
 
-    public decimal Zloty => Grosz / 100m;
+    public decimal Zloty => Grosz / GroszPerZloty;
 
     public static Money FromZloty(decimal zloty)
     {
-        var grosz = zloty * 100m;
+        var grosz = zloty * GroszPerZloty;
 
         if (grosz != decimal.Truncate(grosz))
         {

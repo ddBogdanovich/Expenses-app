@@ -30,7 +30,7 @@ This centralizes versions, not dependencies. A project still declares its own `P
 
 `.editorconfig` defines UTF-8, line endings, indentation, the `I` prefix for interfaces, and the `Async` suffix rule for asynchronous methods. IDE settings are personal; `.editorconfig` is part of the repository and can be enforced by the build.
 
-Naming rules carry meaning. `HandleAsync` tells a caller that the operation returns a task and may suspend. `IEndpoint` distinguishes a contract from its implementation. Naming alone cannot create a good abstraction, so an interface must still represent useful behavior.
+Naming rules carry meaning. `HandleAsync` tells a caller that the operation returns a task and may suspend. `IUseCaseHandler` distinguishes a contract from its implementation. Naming alone cannot create a good abstraction, so an interface must still represent useful behavior.
 
 ## Clean Architecture and vertical slices solve different problems
 
@@ -42,7 +42,7 @@ They combine naturally:
 
 ```text
 HTTP request
-    -> feature endpoint
+    -> feature controller
     -> feature handler
     -> domain behavior
     -> repository or query-service contract
@@ -55,13 +55,15 @@ The first real feature might eventually look like this:
 UseCases/
   Expenses/
     RecordExpense/
-      RecordExpense.Endpoint.cs
+      RecordExpense.Controller.cs
       RecordExpense.Request.cs
       RecordExpense.Handler.cs
       RecordExpense.Validation.cs
 ```
 
 This is a shape, not a requirement to create empty folders. We will introduce it with an actual use case so every file has a reason to exist.
+
+MVC discovers controllers in the UseCases assembly through an explicit application part. Only handler implementations are scanned for scoped DI registration; controllers use constructor injection and follow MVC lifetimes. See [ADR 0006](../decisions/0006-controllers-and-named-policies.md).
 
 ## Why retain repositories for writes?
 
@@ -73,7 +75,7 @@ Reads have a different goal. A calendar screen may need a projection of dates, d
 
 ## Why no MediatR or AutoMapper?
 
-An endpoint can call its handler directly. A project-wide mediator would add dispatch and pipeline concepts before we need them. If cross-cutting handler behaviors later become difficult to manage, that concrete pressure gives us a reason to reconsider.
+A controller can call its handler directly. A project-wide mediator would add dispatch and pipeline concepts before we need them. If cross-cutting handler behaviors later become difficult to manage, that concrete pressure gives us a reason to reconsider.
 
 Mapping is code with product meaning, especially when money, dates, and local time are involved. Explicit functions keep those decisions searchable and debuggable. Automated mapping becomes useful only when repetitive, mechanical mapping outweighs its implicit behavior.
 

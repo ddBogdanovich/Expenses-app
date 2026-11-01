@@ -10,12 +10,12 @@ public sealed class RegisterHandler(IUserAccountRepository accounts, IPasswordSe
     public async Task<Result<TokenResponse>> HandleAsync(CredentialsRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (!EmailAddress.TryCreate(request.Email, out var email) || !AuthenticationErrors.IsPasswordValid(request.Password))
+        if (!EmailAddress.TryCreate(request.Email, out var email) || !PasswordPolicy.IsInputValid(request.Password))
         {
             return Result.Failure<TokenResponse>(AuthenticationErrors.InvalidInput);
         }
 
-        if (request.Password!.Length < 12)
+        if (request.Password!.Length < PasswordPolicy.MinimumLength)
         {
             return Result.Failure<TokenResponse>(AuthenticationErrors.WeakPassword);
         }

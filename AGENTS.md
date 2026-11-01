@@ -32,7 +32,7 @@ Human instructions in the current conversation take precedence over these reposi
 Start with a modular monolith and a framework-independent domain core. Organize application behavior into vertical slices.
 
 - `src/PolandExpenses.Domain`: domain behavior, aggregates, entities, value objects, and aggregate-specific repository contracts. No ASP.NET Core, EF Core, messaging, or UI dependencies.
-- `src/PolandExpenses.UseCases`: feature folders containing their endpoint, request, handler, validation, response, and mapping as needed. Shared application contracts live in `Common`. Query-service contracts belong here.
+- `src/PolandExpenses.UseCases`: feature folders containing their controller, request, handler, validation, response, and mapping as needed. Shared application contracts live in `Common`. Query-service contracts belong here.
 - `src/PolandExpenses.Infrastructure`: repository and query-service implementations, persistence, messaging, and external integrations.
 - `src/PolandExpenses.Api`: host configuration and dependency composition.
 - `src/PolandExpenses.ServiceDefaults`: shared Aspire health, telemetry, discovery, and resilience configuration.
@@ -42,7 +42,7 @@ Start with a modular monolith and a framework-independent domain core. Organize 
 
 Use aggregate-specific repositories for writes and focused query services for read projections. Avoid generic `IRepository<T>`. Introduce contracts alongside the feature or aggregate that needs them.
 
-Use `IEndpoint` and `IUseCaseHandler<TRequest, TResponse>` with controlled contract scanning. Endpoints invoke their concrete handlers directly. Keep endpoint modules stateless: their singleton registration must not capture scoped handlers or persistence services; resolve those through route-handler parameters.
+Use ASP.NET Core `[ApiController]` controllers inside vertical-slice feature folders and `IUseCaseHandler<TRequest, TResponse>` with controlled handler scanning. Controllers invoke their concrete handlers through constructor injection. Register the UseCases assembly as an MVC application part and map controllers in the API host. Keep controllers thin: routing, binding, authorization attributes, and explicit HTTP response mapping only. Do not reintroduce minimal API business endpoints or `IEndpoint`; shared health/telemetry endpoints may retain framework mapping helpers.
 
 Use explicit mapping functions. Do not introduce MediatR or AutoMapper without a concrete need and an explained architecture decision.
 
@@ -69,6 +69,7 @@ Treat documentation updates as part of completing an architecture change. In the
 - API integration tests use Testcontainers PostgreSQL with real migrations and disposable data. Docker is required. Preserve coverage for restart persistence, duplicate-email races, and token validation; do not substitute an in-memory repository as proof of database behavior.
 - Messaging and Kubernetes are planned learning areas. Add them with a feature or learning milestone that defines their purpose.
 - Respect `.editorconfig`: UTF-8, LF, four-space C# indentation, `I` interface prefix, and `Async` suffix for asynchronous methods.
+- Do not use unexplained numeric literals in production code. Express business limits, security thresholds, conversion factors, timeouts, and storage limits as meaningfully named constants or typed policies owned by the relevant feature/layer. Reuse the same definition in validation, error text, and persistence when they represent the same rule. Use validated configuration for values that genuinely vary by environment; avoid a global catch-all constants class. Obvious structural values (for example zero), package versions, generated migrations/snapshots, and explicit test inputs/expected values may remain literals. This is a repository-wide implementation and code-review rule.
 - Keep package versions in `Directory.Packages.props`; package references in project files must omit versions. SDK versions remain SDK declarations.
 - Preserve nullable analysis, warnings as errors, `AnalysisMode=All`, and deterministic compilation. Use the built-in .NET analyzers and Sonar; explain any narrowly scoped suppression.
 - Tests currently use xUnit v2 (`xunit` 2.9.3). The v3 Visual Studio runner does not imply a v3 test framework. A v3 migration was recommended but has not been implemented or authorized as a task.

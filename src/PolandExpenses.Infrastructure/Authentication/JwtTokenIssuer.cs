@@ -20,7 +20,7 @@ internal sealed class JwtTokenIssuer(IOptions<JwtSettings> settings, TimeProvide
             audience: options.Audience,
             claims: [new Claim("sub", account.Id.ToString()), new Claim("jti", Guid.NewGuid().ToString())],
             notBefore: now,
-            expires: now.AddMinutes(30),
+            expires: now.Add(JwtSettings.AccessTokenLifetime),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.SigningKey)), SecurityAlgorithms.HmacSha256));
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

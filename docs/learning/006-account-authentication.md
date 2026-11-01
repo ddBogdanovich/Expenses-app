@@ -8,14 +8,16 @@ Email uniqueness spans aggregates, so the account alone cannot enforce it. `IUse
 
 ## Follow one registration
 
-1. `UseCases/Authentication/Register/RegisterEndpoint` receives JSON and resolves its scoped concrete handler through route parameters. The singleton endpoint captures no database services.
+1. `UseCases/Authentication/Register/RegisterController` receives JSON through MVC and resolves its scoped concrete handler through constructor injection. The controller is created for the request.
 2. `RegisterHandler` validates the email and 12–128-character password policy, asks `IPasswordService` for a hash, and creates the aggregate.
 3. `UserAccountRepository` inserts through a scoped `ExpensesDbContext`. EF converts the email value object to a string; PostgreSQL enforces uniqueness. Only the specific email unique-constraint failure becomes a conflict.
-4. After persistence succeeds, `IAccessTokenIssuer` issues a signed token and the endpoint returns only `accessToken` with 201.
+4. After persistence succeeds, `IAccessTokenIssuer` issues a signed token and the controller returns only `accessToken` with 201.
 
 Login retrieves the aggregate, verifies the hash, and issues a token with the same subject. It never calls insertion. A dummy hash gives unknown emails verification work too; the response does not reveal whether the email or password was wrong. This reduces one enumeration signal but does not promise identical timing.
 
 Ports are application/domain interfaces; adapters are Infrastructure implementations. This lets handlers describe intent without knowing Npgsql, Identity, or JWT types. The cost is several small contracts and mappings. An ordinary CRUD service with direct EF calls would be shorter, but would couple our learning domain to persistence. We intentionally avoid generic repositories, mediator dispatch, domain-event machinery, and extra projects until behavior needs them.
+
+Password limits now live in `Authentication/Common/PasswordPolicy`; validation and error text use the same named values. See [Learning note 007](007-controllers-and-named-policies.md) for the controller migration and repository-wide numeric-literal convention.
 
 ## Passwords and tokens solve different problems
 

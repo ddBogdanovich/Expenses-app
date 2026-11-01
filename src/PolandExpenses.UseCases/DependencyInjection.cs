@@ -1,5 +1,4 @@
 using System.Reflection;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using PolandExpenses.UseCases.Common;
 
@@ -21,24 +20,8 @@ public static class UseCasesServiceCollectionExtensions
             services.AddScoped(handlerType.AsType());
         }
 
-        foreach (var endpointType in concreteTypes.Where(typeof(IEndpoint).IsAssignableFrom))
-        {
-            services.AddSingleton(typeof(IEndpoint), endpointType.AsType());
-        }
-
+        services.AddControllers().AddApplicationPart(Assembly.GetExecutingAssembly());
         return services;
-    }
-
-    public static IEndpointRouteBuilder MapUseCaseEndpoints(this IEndpointRouteBuilder endpoints)
-    {
-        ArgumentNullException.ThrowIfNull(endpoints);
-
-        foreach (var endpoint in endpoints.ServiceProvider.GetServices<IEndpoint>())
-        {
-            endpoint.MapEndpoint(endpoints);
-        }
-
-        return endpoints;
     }
 
     private static bool IsUseCaseHandler(TypeInfo type) => type.ImplementedInterfaces.Any(

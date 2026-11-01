@@ -25,7 +25,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints();
-app.MapUseCaseEndpoints();
+app.MapControllers();
 
 await app.RunAsync().ConfigureAwait(false);
 

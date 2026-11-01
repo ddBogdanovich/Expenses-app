@@ -16,7 +16,7 @@ public static class AuthenticationServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddOptions<JwtSettings>().Bind(configuration.GetSection("Jwt"))
-            .Validate(options => Encoding.UTF8.GetByteCount(options.SigningKey) >= 32, "Jwt:SigningKey must contain at least 32 bytes.")
+            .Validate(options => Encoding.UTF8.GetByteCount(options.SigningKey) >= JwtSettings.MinimumSigningKeyBytes, $"Jwt:SigningKey must contain at least {JwtSettings.MinimumSigningKeyBytes} bytes.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer) && !string.IsNullOrWhiteSpace(options.Audience), "JWT issuer and audience are required.")
             .ValidateOnStart();
         services.AddSingleton(TimeProvider.System);

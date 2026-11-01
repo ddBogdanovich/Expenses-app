@@ -1,6 +1,6 @@
 # ADR 0002: Use a clean domain core with vertical use-case slices
 
-- Status: Accepted
+- Status: Accepted; HTTP endpoint mechanism superseded by [ADR 0006](0006-controllers-and-named-policies.md).
 - Date: 2026-09-22
 
 ## Context

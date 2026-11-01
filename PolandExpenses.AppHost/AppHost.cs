@@ -1,10 +1,12 @@
+const int GeneratedSigningKeyLength = 64;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var database = builder.AddPostgres("postgres")
     .WithDataVolume()
     .AddDatabase("expenses");
 
-var signingKey = builder.AddParameter("jwt-signing-key", new GenerateParameterDefault { MinLength = 64 }, secret: true, persist: true);
+var signingKey = builder.AddParameter("jwt-signing-key", new GenerateParameterDefault { MinLength = GeneratedSigningKeyLength }, secret: true, persist: true);
 
 builder.AddProject<Projects.PolandExpenses_Api>("api")
     .WithReference(database)

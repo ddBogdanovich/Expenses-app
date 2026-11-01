@@ -49,13 +49,13 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 ```
 
 - `Domain` owns business language and invariants.
-- `UseCases` owns feature handlers and HTTP endpoint modules.
+- `UseCases` owns feature handlers and ASP.NET Core controllers inside each vertical slice.
 - `Infrastructure` implements account persistence with EF Core/Npgsql, password hashing, JWT signing and validation. Messaging and expense query services are planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
 - `Web` is an independent browser frontend; Aspire starts its Vite development server alongside the API.
 
-Read [ADR 0002](docs/decisions/0002-clean-domain-with-vertical-use-cases.md) for the decisions and tradeoffs.
+Read [ADR 0002](docs/decisions/0002-clean-domain-with-vertical-use-cases.md) for dependency boundaries and [ADR 0006](docs/decisions/0006-controllers-and-named-policies.md) for controllers and named policy values.
 
 ## Learning workflow
 
@@ -84,7 +84,7 @@ PostgreSQL uses a Docker volume so database contents survive `aspire stop` and s
 
 The API calls `AddPostgresPersistence` and applies versioned account migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PolandExpenses` and `PolandExpenses.Web`.
 
-The HTTP contract is `POST /auth/register` (201), `POST /auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters. Invalid input returns 400, invalid credentials 401, duplicate email 409.
+The HTTP contract is `POST /auth/register` (201), `POST /auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters, defined centrally by `PasswordPolicy` in the authentication slice. Invalid input returns 400, invalid credentials 401, duplicate email 409.
 
 Generate reviewed deployment SQL from the repository root:
 
