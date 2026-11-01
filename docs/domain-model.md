@@ -61,3 +61,9 @@ Assume a plan starts on 2026-09-20 with a 50.00 PLN daily allowance and zero ope
 - `Expense`, including amount, purchase date, category, note, and whether it qualifies.
 - The allowance calculation over dates, rate changes, and expense history.
 
+
+## Account identity boundary
+
+Authentication is a supporting module separate from budgeting. A `UserAccount` aggregate has a stable ID, an `EmailAddress` value object, and an opaque password verifier. Email identity is trimmed and case-insensitive (stored uppercase); PostgreSQL enforces one account per normalized email, including concurrent registration attempts. Registration creates an account; login only retrieves and verifies one. Password hashing and JWT cryptography belong to Infrastructure, not the domain.
+
+No plaintext password is stored. Registration's application-level credential policy accepts 12–128 characters; empty/null credentials and malformed emails are rejected. A login failure uses the same response for an unknown email and a wrong password. Access tokens expire after 30 minutes. Budget ownership and per-account expense access are not implemented yet; future aggregates will reference the account by ID rather than embedding accounts or sharing persistence models.

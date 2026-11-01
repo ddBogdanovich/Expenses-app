@@ -4,7 +4,9 @@ A personal budgeting application built to make a rolling daily allowance easy to
 
 ## Current milestone
 
-Milestone 1 establishes the domain language and the application foundation. The solution contains the domain model, strict repository-wide build rules, an ASP.NET Core API, shared Aspire service defaults, and an empty React frontend. The AppHost orchestrates both the API and frontend. Persistence and product screens will be added with the first feature that needs them.
+Feature 1 implements email/password registration and login with signed, 30-minute JWT access tokens. Accounts are persisted in PostgreSQL through a framework-independent DDD account aggregate and EF Core repository. The React frontend remains a placeholder; authentication screens and budget features are planned.
+
+See [authentication contracts and tests](docs/learning/005-authentication-tests-first.md), [the DDD implementation guide](docs/learning/006-account-authentication.md), and [ADR 0005](docs/decisions/0005-account-authentication.md).
 
 ## Frontend
 
@@ -26,12 +28,15 @@ Read [Learning note 003](docs/learning/003-react-frontend-foundation.md) for the
 - .NET SDK 10
 - Aspire CLI 13.5 or later
 - Node.js 24 LTS and npm (the installed Vite version requires Node.js 20.19+ or 22.12+)
+- Docker Desktop or another running Aspire-compatible container runtime for PostgreSQL
 
 ## Run the tests
 
 ```shell
-dotnet test
+dotnet test PolandExpenses.slnx
 ```
+
+HTTP tests require Docker and start a disposable PostgreSQL 17 container. They apply real migrations and cover API restart persistence, duplicate registration races, and bearer-token validation. They never use the developer database.
 
 See [docs/domain-model.md](docs/domain-model.md) for the current rules and worked examples.
 
@@ -45,7 +50,7 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 
 - `Domain` owns business language and invariants.
 - `UseCases` owns feature handlers and HTTP endpoint modules.
-- `Infrastructure` will implement aggregate repositories, query services, messaging, and integrations.
+- `Infrastructure` implements account persistence with EF Core/Npgsql, password hashing, JWT signing and validation. Messaging and expense query services are planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
 - `Web` is an independent browser frontend; Aspire starts its Vite development server alongside the API.
@@ -66,7 +71,7 @@ Start with [Value objects and Money](docs/learning/001-value-objects-and-money.m
 
 ## Local orchestration
 
-Aspire is the development composition root from the first milestone. The AppHost starts the API and the `web` frontend, installs frontend dependencies with `npm ci`, and checks both resources for readiness. The API exports OpenTelemetry; Vite's process logs and resource state are visible in the dashboard.
+Aspire is the development composition root from the first milestone. The AppHost starts the API, the `web` frontend, and the `postgres` server with an `expenses` database. The API references and waits for `expenses`; `web` remains independent. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard.
 
 ```shell
 cd PolandExpenses.AppHost
@@ -74,3 +79,17 @@ aspire start
 ```
 
 Open the dashboard URL printed by Aspire, then open the `web` resource endpoint. The API exposes development health endpoints at `/health` and `/alive`. Frontend API integration and browser telemetry will be introduced with a real feature.
+
+PostgreSQL uses a Docker volume so database contents survive `aspire stop` and subsequent starts. Its container uses the default session lifetime and stops with the AppHost. Aspire manages the local credentials and host port; use the dashboard's `expenses` connection string to connect with a database client. Do not commit credentials. A volume is not a backup.
+
+The API calls `AddPostgresPersistence` and applies versioned account migrations automatically in Development and Testing. Other environments require migrations to be applied separately before startup. Outside Aspire, configure `ConnectionStrings__expenses` and a random `Jwt__SigningKey` of at least 32 bytes through environment variables or secrets; no production key is committed. Optional `Jwt__Issuer` and `Jwt__Audience` default to `PolandExpenses` and `PolandExpenses.Web`.
+
+The HTTP contract is `POST /auth/register` (201), `POST /auth/login` (200), each accepting `{ "email": "...", "password": "..." }` and returning `{ "accessToken": "..." }`. `GET /auth/me` requires a valid bearer token and returns its account ID. Registration requires 12–128 password characters. Invalid input returns 400, invalid credentials 401, duplicate email 409.
+
+Generate reviewed deployment SQL from the repository root:
+
+```shell
+dotnet ef migrations script --idempotent --project src/PolandExpenses.Infrastructure --output /tmp/poland-expenses-migrations.sql
+```
+
+The EF tool is installed separately (`dotnet tool install --global dotnet-ef --version 10.0.11`). Supply database credentials through your deployment secret mechanism when applying SQL. Development migration convenience is not a production rollout strategy. See [Learning note 004](docs/learning/004-postgresql-and-ef-core.md) for persistence concepts and [Learning note 006](docs/learning/006-account-authentication.md) for authentication boundaries and limits.
