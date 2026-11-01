@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Feature 2 implements backend expense CRUD for authenticated accounts, alongside registration and login with signed, 30-minute JWT access tokens. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. The React frontend remains a placeholder; allowance calculations and browser features are planned.
+Feature 2 implements backend expense CRUD for authenticated accounts, alongside registration and login with signed, 30-minute JWT access tokens. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. The React frontend provides account registration connected to the API; allowance calculations and budget screens are planned.
 
 See [the expense implementation guide](docs/learning/008-expense-aggregate-and-ownership.md) and [ADR 0007](docs/decisions/0007-expense-aggregate-and-api-prefix.md).
 
@@ -12,7 +12,7 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Frontend
 
-`src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. It currently displays a simple placeholder; budget screens and API calls are still planned.
+`src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. It displays a responsive HeroUI registration page with validation, password visibility, submission feedback, and a success state. Access tokens stay in memory for the current page session; login and budget screens are still planned.
 
 To install dependencies and verify the frontend:
 
@@ -21,6 +21,7 @@ cd src/PocketLedger.Web
 npm ci
 npm run build
 npm run lint
+npm test
 ```
 
 Read [Learning note 003](docs/learning/003-react-frontend-foundation.md) for the purpose of each tool and [ADR 0003](docs/decisions/0003-react-vite-frontend.md) for the technology choices.
@@ -59,7 +60,7 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 - `Infrastructure` implements account and expense persistence with EF Core/Npgsql, owner-filtered expense query projections, Warsaw business dates, password hashing, and JWT signing and validation. Messaging remains planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
-- `Web` is an independent browser frontend; Aspire starts its Vite development server alongside the API.
+- `Web` is a browser frontend; Aspire starts its Vite development server and supplies the API endpoint for its `/api` development proxy.
 
 Read [ADR 0002](docs/decisions/0002-clean-domain-with-vertical-use-cases.md) for dependency boundaries and [ADR 0006](docs/decisions/0006-controllers-and-named-policies.md) for controllers and named policy values.
 
@@ -77,16 +78,16 @@ Start with [Value objects and Money](docs/learning/001-value-objects-and-money.m
 
 ## Local orchestration
 
-Aspire is the development composition root from the first milestone. The AppHost starts the API, the `web` frontend, and the `postgres` server with an `expenses` database. The API references and waits for `expenses`; `web` remains independent. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
+Aspire is the development composition root from the first milestone. The AppHost starts the API, the `web` frontend, and the `postgres` server with an `expenses` database. The API references and waits for `expenses`; `web` waits for the API and receives its HTTP endpoint as `API_BASE_URL`. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
 
 ```shell
 cd PocketLedger.AppHost
 aspire start
 ```
 
-Open the dashboard URL printed by Aspire. The API, database, and frontend start automatically; their dashboard Start/Stop/Restart actions remain available. Open the `web` resource endpoint for the frontend. To run backend tests, click **Start** on **tests** and view its **Console logs**. Successful completion exits with code 0; use Start or Restart to run it again. The test resource builds the latest source into `.artifacts/tests` and uses disposable PostgreSQL containers, so it can run while the application is up. See [Learning note 010](docs/learning/010-aspire-dashboard-and-tests.md) and [ADR 0009](docs/decisions/0009-dashboard-test-runner.md). The API exposes development health endpoints at `/api/health` and `/api/alive`. Frontend API integration and browser telemetry will be introduced with a real feature.
+Open the dashboard URL printed by Aspire. The API, database, and frontend start automatically; their dashboard Start/Stop/Restart actions remain available. Open the `web` resource endpoint for the frontend. To run backend tests, click **Start** on **tests** and view its **Console logs**. Successful completion exits with code 0; use Start or Restart to run it again. The test resource builds the latest source into `.artifacts/tests` and uses disposable PostgreSQL containers, so it can run while the application is up. See [Learning note 010](docs/learning/010-aspire-dashboard-and-tests.md) and [ADR 0009](docs/decisions/0009-dashboard-test-runner.md). The API exposes development health endpoints at `/api/health` and `/api/alive`. Registration calls `/api/auth/register` through the Vite proxy. Browser telemetry remains planned.
 
-For API call logs, select **api** in **Console logs** or **Structured logs** and include the **Information** level. The API enables `Microsoft.AspNetCore.Hosting.Diagnostics` at Information for request-start and request-finish events, including method, URL, status, and elapsed time. Other ASP.NET Core categories remain at Warning. Structured entries include a trace ID for correlation; health-probe traces remain excluded, although their request logs are visible. The frontend placeholder does not call the API yet, so refreshing `web` alone does not generate an API call. See [request logging in Learning note 002](docs/learning/002-project-foundation-and-vertical-slices.md#request-logs-and-traces-are-different).
+For API call logs, select **api** in **Console logs** or **Structured logs** and include the **Information** level. The API enables `Microsoft.AspNetCore.Hosting.Diagnostics` at Information for request-start and request-finish events, including method, URL, status, and elapsed time. Other ASP.NET Core categories remain at Warning. Structured entries include a trace ID for correlation; health-probe traces remain excluded, although their request logs are visible. Submitting registration generates an API call; refreshing `web` alone does not. See [request logging in Learning note 002](docs/learning/002-project-foundation-and-vertical-slices.md#request-logs-and-traces-are-different).
 
 PostgreSQL uses a Docker volume so database contents survive `aspire stop` and subsequent starts. Its container uses the default session lifetime and stops with the AppHost. Aspire manages the local credentials and host port; use the dashboard's `expenses` connection string to connect with a database client. Do not commit credentials. A volume is not a backup.
 
@@ -125,3 +126,5 @@ Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 
 ## Project identity
 
 The solution and project prefix is `PocketLedger`; the frontend package is `pocketledger-web`. Local PostgreSQL uses the explicitly named `pocketledger-postgres-data` Docker volume. During the rename, existing local data was copied and verified, and the original volume was retained as a fallback. The AppHost keeps its existing UserSecretsId, so saved development credentials and the signing key are reused. Tokens issued with the former default issuer/audience require signing in again. The registered checkout folder keeps its existing filesystem location. See [Learning note 009](docs/learning/009-renaming-project-identity.md) and [ADR 0008](docs/decisions/0008-pocketledger-project-identity.md).
+
+See [Learning note 011](docs/learning/011-registration-page.md) and [ADR 0010](docs/decisions/0010-registration-frontend-api-connection.md) for registration behavior, proxy setup, and verification.

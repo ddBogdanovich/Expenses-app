@@ -1,11 +1,55 @@
 @import "tailwindcss";
 @import "@heroui/styles";
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100dvh;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, sans-serif;
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #262d28;
+  background: #f7f8f4;
+  --accent: #254c39;
+  --accent-foreground: #fff;
+}
+
+body { margin: 0; min-width: 320px; min-height: 100dvh; }
+button, input { font: inherit; }
+.registration-shell { max-width: 1440px; margin: auto; min-height: 100dvh; padding: 40px 6%; display: flex; flex-direction: column; }
+.brand { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 650; letter-spacing: -.7px; }
+.brand-mark { display: inline-flex; align-items: center; justify-content: center; background: #254c39; color: white; width: 35px; height: 35px; border-radius: 11px; font-size: 26px; line-height: 1; }
+.brand-mark span { color: #bdd2a4; font-size: 17px; margin-top: 9px; }
+.registration-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 9%; flex: 1; padding: 72px 0 90px; }
+.eyebrow { display: block; font-size: 10px; letter-spacing: 2px; font-weight: 650; color: #68766b; }
+.intro h1 { font-size: clamp(44px, 5.4vw, 76px); line-height: 1.08; font-weight: 500; letter-spacing: -3.5px; margin: 26px 0; }
+.intro h1 span { color: #71816b; }
+.intro p { color: #69736a; line-height: 1.8; font-size: 15px; }
+.intro-rule { width: 48px; height: 1px; background: #c5cec1; margin: 36px 0 20px; }
+.intro .intro-note { font-size: 12px; }
+.intro-note span { color: #254c39; margin-right: 8px; }
+.registration-card { background: #fff; border: 1px solid #e6e9e1; border-radius: 22px; padding: 44px; box-shadow: 0 12px 50px -30px #293f3a25; }
+.registration-card h2 { font-size: 28px; font-weight: 550; letter-spacing: -1px; line-height: 1.25; margin: 17px 0 10px; }
+.form-intro { color: #626e60; font-size: 14px; margin: 0 0 32px; }
+.registration-form { display: flex; flex-direction: column; gap: 24px; }
+.registration-form .label { font-size: 12px; font-weight: 550; }
+.registration-input { width: 100%; background: #fafbf8; border: 1px solid #e1e6dc; border-radius: 10px; min-height: 48px; box-shadow: none; font-size: 14px; }
+.registration-input:focus { outline: 2px solid #71816b; outline-offset: 2px; }
+.password-input { position: relative; }
+.password-input input { padding-right: 65px; }
+.password-toggle { position: absolute; right: 7px; top: 7px; color: #576a5a; font-size: 11px; }
+.registration-form .description { font-size: 11px; color: #626e60; line-height: 1.6; }
+.registration-form .field-error { white-space: normal; font-size: 12px; }
+.register-button { width: 100%; min-height: 49px; border-radius: 10px; background: #254c39; color: white; justify-content: space-between; padding: 0 20px; font-size: 13px; margin-top: 4px; }
+.form-footnote { text-align: center; color: #626e60; font-size: 10px; margin: 23px 0 0; }
+.form-error { font-size: 12px; line-height: 1.6; color: #a13434; background: #fff5f3; border-radius: 8px; padding: 10px 12px; margin: 0; }
+.page-footer { display: flex; justify-content: space-between; border-top: 1px solid #e0e5da; padding-top: 22px; color: #626e60; font-size: 10px; }
+.success-content { outline: none; padding: 20px 0; }
+.success-content p { font-size: 14px; line-height: 1.8; color: #69736a; overflow-wrap: anywhere; }
+.success-mark { display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 48px; height: 48px; background: #edf3e7; color: #254c39; font-size: 24px; margin-bottom: 28px; }
+@media (max-width: 760px) {
+  .registration-shell { padding: 25px 22px; }
+  .registration-layout { grid-template-columns: 1fr; gap: 32px; padding: 45px 0; }
+  .intro h1 { font-size: 45px; letter-spacing: -2px; margin: 18px 0; }
+  .intro h1 br:nth-child(2) { display: none; }
+  .intro-rule, .intro .intro-note, .desktop-break { display: none; }
+  .intro p { font-size: 14px; }
+  .registration-card { padding: 30px 24px; }
+  .registration-card h2 { font-size: 25px; }
+  .page-footer { gap: 15px; flex-wrap: wrap; line-height: 1.7; }
 }

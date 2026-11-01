@@ -1,4 +1,4 @@
-# Learning note 003: The empty React frontend
+# Learning note 003: The React frontend foundation
 
 ## Each tool has a different job
 
@@ -17,11 +17,11 @@ TypeScript types disappear from the emitted JavaScript. They cannot validate an 
 
 ## How the page starts
 
-`index.html` defines the document and a `root` element. `src/main.tsx` attaches React to that element, imports global CSS, and renders `App` under `StrictMode`. `src/App.tsx` contains the placeholder UI.
+`index.html` defines the document and a `root` element. `src/main.tsx` attaches React to that element, imports global CSS, and renders `App` under `StrictMode`. `src/App.tsx` renders the registration feature.
 
 StrictMode helps expose problematic component behavior during development. Components should render predictably and avoid changing external state during rendering.
 
-`vite.config.ts` activates the React and Tailwind plugins. CSS imports Tailwind first and HeroUI second, matching the [HeroUI quick-start guide](https://heroui.com/docs/react/getting-started/quick-start). HeroUI v3 does not need a global provider. Product components will be added when we implement a screen.
+`vite.config.ts` activates the React and Tailwind plugins. CSS imports Tailwind first and HeroUI second, matching the [HeroUI quick-start guide](https://heroui.com/docs/react/getting-started/quick-start). HeroUI v3 does not need a global provider. Registration now composes HeroUI `Form`, `TextField`, `Input`, `Label`, `FieldError`, and `Button` components. See [Learning note 011](011-registration-page.md).
 
 ## Package versions and the lock file
 
@@ -33,7 +33,7 @@ Commit the lock file, but keep `node_modules` and generated `dist` assets out of
 
 `npm run dev` starts Vite with fast module updates. `npm run build` first checks TypeScript, then produces static assets under `dist`. `npm run preview` is a local way to inspect those assets; it is not our production deployment strategy. See the [Vite guide](https://vite.dev/guide/).
 
-Aspire starts the development server using `AddViteApp`, automatically assigning the development endpoint. Its npm installer uses `ci`, and its health check requests `/`. The frontend does not yet request the API, so there is no API URL, proxy, or CORS policy to configure here.
+Aspire starts the development server using `AddViteApp`, automatically assigning the development endpoint. Its npm installer uses `ci`, and its health check requests `/`. The frontend now requests registration through a same-origin `/api` development proxy. Aspire supplies the API endpoint as `API_BASE_URL`; `web` waits for API health. No browser CORS policy is needed for this connection.
 
 The API already exports OpenTelemetry. The frontend currently contributes process logs and resource status to Aspire; instrumenting browser interactions is a separate task.
 

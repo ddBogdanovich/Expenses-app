@@ -9,7 +9,7 @@ var database = builder.AddPostgres("postgres")
 
 var signingKey = builder.AddParameter("jwt-signing-key", new GenerateParameterDefault { MinLength = GeneratedSigningKeyLength }, secret: true, persist: true);
 
-builder.AddProject<Projects.PocketLedger_Api>("api")
+var api = builder.AddProject<Projects.PocketLedger_Api>("api")
     .WithReference(database)
     .WaitFor(database)
     .WithEnvironment("Jwt__SigningKey", signingKey)
@@ -18,6 +18,8 @@ builder.AddProject<Projects.PocketLedger_Api>("api")
 
 builder.AddViteApp("web", "../src/PocketLedger.Web")
     .WithNpm(installCommand: "ci")
+    .WithEnvironment("API_BASE_URL", api.GetEndpoint("http"))
+    .WaitFor(api)
     .WithHttpHealthCheck("/")
     .WithExternalHttpEndpoints();
 
