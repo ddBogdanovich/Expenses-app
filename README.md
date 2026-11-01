@@ -34,6 +34,10 @@ Read [Learning note 003](docs/learning/003-react-frontend-foundation.md) for the
 
 ## Run the tests
 
+### Browser tooling for Codex
+
+The project configures Microsoft's Playwright MCP server in [`.codex/config.toml`](.codex/config.toml). MCP lets Codex inspect pages and interact with the browser while developing PocketLedger. It requires Node.js/npm and downloads `@playwright/mcp@latest` through `npx` on first use. Reopen the project or restart Codex after changing MCP configuration; project settings apply to trusted projects. This development tool does not add automated browser tests to the application.
+
 ```shell
 dotnet test PocketLedger.slnx
 ```
