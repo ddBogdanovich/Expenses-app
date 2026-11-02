@@ -78,6 +78,12 @@ Treat documentation updates as part of completing an architecture change. In the
 
 ## Verification
 
+Repository-wide Git checks use Lefthook 2.2.2 from the private root npm tooling package. Run `npm ci` and `npm run hooks:install` per clone; the latter installs the pinned, checksum-verified Gitleaks binary in ignored `.tools/` and activates pre-commit/pre-push. Frontend dependencies remain in their separate npm package. Keep both lockfiles reproducible. Node and .NET must be on Git clients' PATH.
+
+Pre-commit checks staged secrets, maintained-file whitespace/conflict markers, frontend source lint, and C# whitespace formatting without fixing or staging source. Lefthook preserves unstaged portions of partially staged files. Pre-push reads Git's input refs and conditionally checks relevant areas in the current working tree; backend builds use `.artifacts/hooks` and run only Domain/UseCases tests. Shared tooling changes select both areas. `npm test` at the root runs hook regression tests; `npm run hooks:check` checks the current index. Installed third-party `.agents/skills/` files are excluded only from whitespace checks, not secret scanning.
+
+`.github/workflows/verify.yml` runs complete committed-revision checks on pushes and pull requests, including Docker-backed API tests. `npm run check:backend`, `npm run check:frontend`, and `npm run check:hygiene` expose the CI checks locally. Hygiene checks inspect the committed tree and reachable Git history. Local hooks can be bypassed; hosted branch protection is configured separately. See `docs/learning/013-git-hooks-and-ci.md` and ADR 0012. Tooling changes need the root regression suite and relevant hook/CI command validation; do not create a real commit or push solely to test hooks.
+
 Run commands from the repository root unless stated otherwise:
 
 ```sh

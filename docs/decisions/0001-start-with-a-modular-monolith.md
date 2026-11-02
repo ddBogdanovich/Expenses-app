@@ -16,4 +16,3 @@ The domain model does not depend on ASP.NET Core, Entity Framework Core, RabbitM
 ## Consequences
 
 Transactions and local development remain straightforward. Module boundaries can be tested before any physical split. Messaging and independent deployment will be introduced only where the reporting use case supplies a concrete reason for them.
-

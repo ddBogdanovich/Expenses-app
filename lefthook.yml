@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://lefthook.dev/schema.json
+min_version: 2.2.2
+lefthook: node_modules/.bin/lefthook
+
+pre-commit:
+  jobs:
+    - name: staged-checks
+      run: node scripts/checks.mjs pre-commit
+
+pre-push:
+  jobs:
+    - name: affected-checks
+      # A script job always receives Git's refs; command jobs can skip based on
+      # the checked-out branch's upstream, which may not be the ref being pushed.
+      script: verify.sh
+      runner: sh
+      use_stdin: true

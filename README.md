@@ -35,6 +35,25 @@ Read [Learning note 003](docs/learning/003-react-frontend-foundation.md) for the
 
 ## Run the tests
 
+### Git hooks and CI
+
+Install repository tooling and activate the local checks from the repository root:
+
+```shell
+npm ci
+npm run hooks:install
+npm --prefix src/PocketLedger.Web ci
+dotnet restore PocketLedger.slnx
+```
+
+The private root npm package pins Lefthook; the frontend retains its separate package and lockfile. Hook installation downloads a checksum-verified Gitleaks binary into ignored `.tools/`. Node.js 24 LTS, Git, `tar`, and the selected .NET SDK are required. Hooks run without Docker or Aspire; the complete API suite still requires Docker.
+
+Pre-commit checks staged secrets, whitespace/conflict markers, changed frontend source with Oxlint, and changed C# whitespace formatting. Checks do not fix or stage files; Lefthook preserves unstaged portions of partially staged files. Pre-push selects backend and frontend verification from the pushed refs. Backend push builds use `.artifacts/hooks` and run Docker-free Domain/UseCases tests; frontend checks run lint, TypeScript, a production build, and Vitest. Shared tooling changes select both areas; documentation-only changes skip builds. Local push checks inspect the working tree; CI validates committed revisions.
+
+[GitHub Actions](.github/workflows/verify.yml) runs hygiene/secret checks, full backend verification including PostgreSQL API tests, and full frontend verification on pushes and pull requests. Branch protection must be enabled separately in GitHub if these checks should block merges. Maintained-file whitespace checks exclude installed third-party `.agents/skills/` files; secret scanning includes them.
+
+Run `npm run hooks:check` to check the current index, `npm test` for hook regression tests, and `npm run check:frontend`, `npm run check:backend`, or `npm run check:hygiene` for the complete area checks. See [Learning note 013](docs/learning/013-git-hooks-and-ci.md) for setup, partial staging, bypasses, and limitations, and [ADR 0012](docs/decisions/0012-git-hooks-and-continuous-integration.md) for the decision.
+
 ### Browser tooling for Codex
 
 The project configures Microsoft's Playwright MCP server in [`.codex/config.toml`](.codex/config.toml). MCP lets Codex inspect pages and interact with the browser while developing PocketLedger. It requires Node.js/npm and downloads `@playwright/mcp@latest` through `npx` on first use. Reopen the project or restart Codex after changing MCP configuration; project settings apply to trusted projects. This development tool does not add automated browser tests to the application.

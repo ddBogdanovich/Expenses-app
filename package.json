@@ -1,0 +1,16 @@
+{
+  "name": "pocketledger-tooling",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hooks:install": "node scripts/install-gitleaks.mjs && lefthook install",
+    "hooks:check": "lefthook run pre-commit",
+    "check:backend": "node scripts/checks.mjs backend",
+    "check:frontend": "node scripts/checks.mjs frontend",
+    "check:hygiene": "node scripts/checks.mjs hygiene",
+    "test": "node --test scripts/checks.test.mjs"
+  },
+  "devDependencies": {
+    "lefthook": "2.2.2"
+  }
+}

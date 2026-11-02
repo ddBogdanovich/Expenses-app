@@ -1,0 +1,2 @@
+# Git invokes hooks through sh, including on Windows; shell wrappers require LF.
+.lefthook/**/*.sh text eol=lf

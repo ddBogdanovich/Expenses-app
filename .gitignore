@@ -11,6 +11,7 @@ dist/
 *.tsbuildinfo
 *.local
 .artifacts/
+.tools/
 
 # Local browser verification artifacts
 .playwright-cli/
