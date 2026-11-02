@@ -11,6 +11,14 @@ internal sealed class ExpenseQueries(ExpensesDbContext context) : IExpenseQuerie
     private static readonly Expression<Func<Expense, ExpenseResponse>> Projection = expense => new ExpenseResponse(
         expense.Id, expense.Amount.Grosz, expense.PurchaseDate, expense.Category, expense.Note, expense.QualifiesForAllowance);
 
+    // PostgreSQL sums bigint as numeric. Return its integer digits without narrowing the total.
+    public Task<string> TotalGroszAsync(Guid ownerId, DateOnly purchaseDate, CancellationToken cancellationToken) =>
+        context.Database.SqlQuery<string>($"""
+            SELECT COALESCE(SUM("AmountGrosz"), 0)::text AS "Value"
+            FROM "Expenses"
+            WHERE "OwnerId" = {ownerId} AND "PurchaseDate" = {purchaseDate}
+            """).SingleAsync(cancellationToken);
+
     public Task<ExpenseResponse?> FindAsync(Guid ownerId, Guid expenseId, CancellationToken cancellationToken) =>
         context.Set<Expense>().AsNoTracking().Where(expense => expense.OwnerId == ownerId && expense.Id == expenseId)
             .Select(Projection).SingleOrDefaultAsync(cancellationToken);

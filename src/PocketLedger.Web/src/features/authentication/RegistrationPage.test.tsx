@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import RegistrationPage from './RegistrationPage'
+import AccountPage from './AccountPage'
 
 async function fillForm(password = 'a long test password') {
   const user = userEvent.setup()
@@ -18,7 +18,7 @@ describe('registration', () => {
     let resolve!: (response: Response) => void
     const fetchMock = vi.fn(() => new Promise<Response>((done) => { resolve = done }))
     vi.stubGlobal('fetch', fetchMock)
-    render(<RegistrationPage />)
+    render(<AccountPage mode="register" onAuthenticated={vi.fn()} />)
     const user = await fillForm()
     await user.click(screen.getByRole('button', { name: 'Create account' }))
     expect(fetchMock).toHaveBeenCalledWith('/api/auth/register', expect.objectContaining({
@@ -34,7 +34,7 @@ describe('registration', () => {
   it('prevents short passwords from reaching the API', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    render(<RegistrationPage />)
+    render(<AccountPage mode="register" onAuthenticated={vi.fn()} />)
     const user = await fillForm('too short')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
     expect(fetchMock).not.toHaveBeenCalled()
@@ -44,7 +44,7 @@ describe('registration', () => {
   it('shows duplicate email feedback and permits correction and retry', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response('{}', { status: 409 }))
       .mockResolvedValueOnce(new Response('{"accessToken":"retry-token"}', { status: 201 })))
-    render(<RegistrationPage />)
+    render(<AccountPage mode="register" onAuthenticated={vi.fn()} />)
     const user = await fillForm()
     await user.click(screen.getByRole('button', { name: 'Create account' }))
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('already exists'))
@@ -59,7 +59,7 @@ describe('registration', () => {
 
   it('supports password visibility and recovers from network failures', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
-    render(<RegistrationPage />)
+    render(<AccountPage mode="register" onAuthenticated={vi.fn()} />)
     const user = await fillForm()
     await user.click(screen.getByRole('button', { name: 'Show password' }))
     expect(screen.getByLabelText('Password', { exact: false, selector: 'input' }).getAttribute('type')).toBe('text')
@@ -73,7 +73,7 @@ describe('registration', () => {
 
 it('retains server password errors when only the email changes', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"code":"auth.weak_password"}', { status: 400 })))
-  render(<RegistrationPage />)
+  render(<AccountPage mode="register" onAuthenticated={vi.fn()} />)
   const user = await fillForm()
   await user.click(screen.getByRole('button', { name: 'Create account' }))
   await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('at least 12'))

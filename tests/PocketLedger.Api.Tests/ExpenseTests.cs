@@ -242,6 +242,45 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
         AssertExpense(await ReadAsync(response).ConfigureAwait(true), 3500, "Food", "Lunch", true);
     }
 
+    [Fact]
+    public async Task TodaySumsAllAndOnlyTheOwnersWarsawDayWithoutLosingPrecisionAsync()
+    {
+        using var application = database.CreateApplication();
+        using var configured = application.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddSingleton<IBusinessCalendar>(new FixedBusinessCalendar(new DateOnly(2026, 1, 1)))));
+        using var client = configured.CreateClient();
+        var today = new Uri("/api/expenses/today", UriKind.Relative);
+        using var anonymous = await client.GetAsync(today).ConfigureAwait(true);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        using var other = configured.CreateClient();
+        await AuthenticateAsync(other).ConfigureAwait(true);
+        await CreateAsync(other).ConfigureAwait(true);
+        await AuthenticateAsync(client).ConfigureAwait(true);
+        using var empty = await client.GetAsync(today).ConfigureAwait(true);
+        Assert.Equal("0", (await ReadAsync(empty).ConfigureAwait(true)).GetProperty("totalGrosz").GetString());
+
+        using var earlier = await client.PostAsJsonAsync("/api/expenses", new
+        {
+            amountGrosz = 123,
+            purchaseDate = "2025-12-31",
+            category = "Food",
+            qualifiesForAllowance = true,
+        }).ConfigureAwait(true);
+        using var first = await client.PostAsJsonAsync("/api/expenses", Expense(long.MaxValue)).ConfigureAwait(true);
+        using var second = await client.PostAsJsonAsync("/api/expenses", Expense(1, qualifies: false)).ConfigureAwait(true);
+        Assert.Equal(HttpStatusCode.Created, earlier.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, second.StatusCode);
+
+        using var result = await client.GetAsync(today).ConfigureAwait(true);
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        var body = await ReadAsync(result).ConfigureAwait(true);
+        Assert.Equal("2026-01-01", body.GetProperty("purchaseDate").GetString());
+        Assert.Equal("9223372036854775808", body.GetProperty("totalGrosz").GetString());
+    }
+
+    private sealed record FixedBusinessCalendar(DateOnly Today) : IBusinessCalendar;
+
     [Theory]
     [InlineData("2026-01-01T22:30:00Z", "2026-01-01")]
     [InlineData("2026-01-01T23:30:00Z", "2026-01-02")]

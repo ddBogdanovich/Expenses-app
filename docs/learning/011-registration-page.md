@@ -2,15 +2,15 @@
 
 ## Components and state
 
-`src/PocketLedger.Web/src/features/registration/RegistrationPage.tsx` composes HeroUI form controls. A `TextField` connects its label, input, help text, and validation error for assistive technology. `useState` holds entered values and visible submission state. A ref blocks repeated submissions immediately, before a render updates the button. The password can be revealed through a keyboard-accessible button and uses `new-password` autocomplete.
+`src/PocketLedger.Web/src/features/authentication/AccountPage.tsx` composes HeroUI form controls. A `TextField` connects its label, input, help text, and validation error for assistive technology. `useState` holds entered values and visible submission state. A ref blocks repeated submissions immediately, before a render updates the button. The password can be revealed through a keyboard-accessible button and uses `new-password` autocomplete.
 
 HTML email validation and the named frontend `passwordPolicy` provide immediate feedback. They improve usability; the backend still validates every request and enforces unique emails. No name, currency choice, or password composition rules are added to the established contract.
 
 ## HTTP is a boundary
 
-`registration-api.ts` sends `{ email, password }` to `POST /api/auth/register`. TypeScript cannot prove the runtime response is valid, so the client checks for 201 and a nonempty string access token. Duplicate email (409), invalid input (400), unexpected responses, and network failure produce recoverable messages. Passwords are never trimmed; surrounding email whitespace is trimmed.
+`auth-api.ts` sends `{ email, password }` to `POST /api/auth/register`. TypeScript cannot prove the runtime response is valid, so the client checks for 201 and a nonempty string access token. Duplicate email (409), invalid input (400), unexpected responses, and network failure produce recoverable messages. Passwords are never trimmed; surrounding email whitespace is trimmed.
 
-Successful registration clears the password and holds the token in React memory. A reload loses it. Browser storage would survive reload but persist a bearer credential; cookies would require backend support and a separate authentication decision. The current success screen truthfully stops at account creation because budget screens and browser login are still planned.
+Successful registration clears the password and holds the token in React memory. A reload loses it. Browser storage would survive reload but persist a bearer credential; cookies would require backend support and a separate authentication decision. The success screen lets the user continue to [today’s spending](012-login-and-daily-spending.md) using that token.
 
 ## Why a proxy?
 
@@ -31,6 +31,6 @@ From `src/PocketLedger.Web`, run `npm ci`, `npm test`, `npm run build`, and `npm
 
 Registration retains the server error as one object containing its message and optional field. Editing the password leaves an email conflict visible; editing the email clears that conflict. This avoids separate message and field-error state drifting apart. General request errors clear when the user edits either field or retries.
 
-The request uses an `AbortController` with the feature-owned `registrationRequestTimeoutMs` (15 seconds). The deadline covers response headers and reading the response body; `finally` clears the timer. An aborted request releases the form and offers retry feedback. Cancellation cannot undo an account already saved on the server, so the timeout message acknowledges that account creation may have succeeded. Tests use a controlled clock to verify both stalled headers and a stalled body without waiting in real time.
+The request uses an `AbortController` with the shared `requestTimeoutMs` (15 seconds). The deadline covers response headers and reading the response body; `finally` clears the timer. An aborted request releases the form and offers retry feedback. Cancellation cannot undo an account already saved on the server, so the timeout message acknowledges that account creation may have succeeded. Tests use a controlled clock to verify both stalled headers and a stalled body without waiting in real time.
 
 Inputs use 16px text, with larger labels and supporting copy. Inline errors and invalid field labels use the same darker error token as the form-level alert, keeping their text readable against the white card. These changes preserve the minimal layout while prioritizing reading and recovery over decorative compactness.

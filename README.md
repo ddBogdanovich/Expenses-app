@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Feature 2 implements backend expense CRUD for authenticated accounts, alongside registration and login with signed, 30-minute JWT access tokens. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. The React frontend provides account registration connected to the API; allowance calculations and budget screens are planned.
+Feature 3 adds browser login and a protected main page showing the signed-in account’s spending for today in Warsaw, in Polish złoty. Authentication uses signed, 30-minute JWT access tokens. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. Rolling allowance calculations remain planned. See [Login and daily spending](docs/learning/012-login-and-daily-spending.md) and [ADR 0011](docs/decisions/0011-daily-spending-projection.md).
 
 See [the expense implementation guide](docs/learning/008-expense-aggregate-and-ownership.md) and [ADR 0007](docs/decisions/0007-expense-aggregate-and-api-prefix.md).
 
@@ -12,7 +12,7 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Frontend
 
-`src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. It displays a responsive HeroUI registration page with validation, password visibility, submission feedback, and a success state. Access tokens stay in memory for the current page session; login and budget screens are still planned.
+`src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. Open `/` to see today’s total. Signed-out visitors go to `/login`; new users can follow the registration link to `/register`. Successful login opens the main page, and registration offers a continuation from its confirmation screen. Tokens stay in memory. Logging out or reloading requires a fresh login.
 
 To install dependencies and verify the frontend:
 
@@ -111,6 +111,7 @@ All backend endpoints use the `/api` prefix. Expense routes require a bearer tok
 | --- | --- | --- |
 | POST | `/api/expenses` | 201, expense JSON and `Location` |
 | GET | `/api/expenses` | 200, JSON array of the caller's expenses |
+| GET | `/api/expenses/today` | 200, Warsaw purchase date and total for the caller, e.g. `{"purchaseDate":"2026-11-02","totalGrosz":"4237"}` |
 | GET | `/api/expenses/{id}` | 200, expense JSON |
 | PUT | `/api/expenses/{id}` | 200, replaced expense JSON |
 | DELETE | `/api/expenses/{id}` | 204 |

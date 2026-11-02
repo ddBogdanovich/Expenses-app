@@ -22,6 +22,7 @@ public sealed record ExpenseResponse(Guid Id, long AmountGrosz, DateOnly Purchas
 /// <summary>Read projections filtered by the authenticated owner.</summary>
 public interface IExpenseQueries
 {
+    Task<string> TotalGroszAsync(Guid ownerId, DateOnly purchaseDate, CancellationToken cancellationToken);
     Task<ExpenseResponse?> FindAsync(Guid ownerId, Guid expenseId, CancellationToken cancellationToken);
     Task<IReadOnlyList<ExpenseResponse>> ListAsync(Guid ownerId, CancellationToken cancellationToken);
 }

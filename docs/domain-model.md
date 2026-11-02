@@ -15,6 +15,7 @@ It records other expenses too, but only qualifying expenses affect that allowanc
 | Opening carryover | An optional signed amount applied when the budget plan starts. |
 | Qualifying expense | An expense that reduces the rolling everyday allowance. Food and household purchases qualify by default. |
 | Non-qualifying expense | A recorded expense that remains visible but does not reduce the allowance. |
+| Daily spending | Sum of all the account’s expenses with a purchase date equal to today in Warsaw, including non-qualifying purchases. An empty day totals zero. |
 | Available allowance | Opening carryover plus allowance earned through a date, minus qualifying expenses through that date. |
 | Closing allowance | The available allowance at the end of a selected date. It may be negative. |
 | Allowance period | A date range during which one daily allowance rate applies. |
