@@ -1,0 +1,12 @@
+# PocketLedger frontend instructions
+
+Read the root `AGENTS.md`, this package's `README.md`, and [`docs/design/README.md`](../../docs/design/README.md) before UI work. The design guide is the product-specific design contract; [`src/styles/tokens.css`](src/styles/tokens.css) owns exact values. Explicit user instructions take precedence.
+
+- Sign in and open the Vite development-only `/design-system` reference before extending a reusable UI pattern. Update its examples when the pattern changes; keep examples local and free of real account data or API calls. Keep its route inside the authenticated application flow: verify sessions through `/api/auth/me` before showing examples, fail closed on unavailable verification, and return rejected sessions to login. Sample interactions remain local; session verification requires the API. Keep this page and its styles excluded from production builds.
+- Use HeroUI **v3** controls directly and the local HeroUI/React skills. Do not wrap every library component. Use `PageShell`, `Notice`, and the existing form and spending-summary recipes where their meaning fits.
+- Use semantic theme variables and named layout/type tokens. Do not add literal colors in feature code, duplicate palettes in TypeScript, or invent a new visual direction per page. Generic skill output is advisory and must fit the accepted PocketLedger guide.
+- Keep business/fetching behavior in feature folders. `src/ui` holds shared presentation; product-specific patterns such as `SpendingSummary` remain with their owning feature.
+- Keep light mode explicit. Preserve mobile safe areas, scrollable keyboard access, scalable text, visible focus, reduced motion, and precise PLN formatting. Record deliberate design exceptions in the guide rather than hiding them in one page's CSS.
+- Run `npm run build`, `npm run lint`, and `npm test` from this directory. Every UI change also requires final Playwright MCP validation and project-local UI/UX Pro Max review under the root instructions. Use the matrix in learning note 014. A build or CLI-only browser run does not replace MCP validation; report a blocker and keep the work incomplete if unavailable.
+
+When design structure changes, update the guide, reference examples, affected READMEs and instructions, and learning notes/ADRs as required by the root instructions. Keep exact values in code and usage explanations in the guide to reduce documentation drift.

@@ -1,72 +1,101 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "./styles/tokens.css";
 
-:root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #262d28;
-  background: #f7f8f4;
-  --registration-error: #a13434;
-  --accent: #254c39;
-  --accent-foreground: #fff;
-}
-
-body { margin: 0; min-width: 320px; min-height: 100dvh; }
+html { scroll-padding-block: var(--space-6); font-family: var(--font-sans); color: var(--foreground); background: var(--background); }
+body { margin: 0; min-width: 320px; min-height: 100dvh; line-height: var(--leading-body); }
 button, input { font: inherit; }
-.registration-shell { max-width: 1440px; margin: auto; min-height: 100dvh; padding: 40px 6%; display: flex; flex-direction: column; }
-.brand { display: flex; align-items: center; gap: 11px; font-size: 20px; font-weight: 650; letter-spacing: -.7px; }
-.brand-mark { display: inline-flex; align-items: center; justify-content: center; background: #254c39; color: white; width: 35px; height: 35px; border-radius: 11px; font-size: 26px; line-height: 1; }
-.brand-mark span { color: #bdd2a4; font-size: 17px; margin-top: 9px; }
-.registration-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 9%; flex: 1; padding: 72px 0 90px; }
-.eyebrow { display: block; font-size: 12px; letter-spacing: 2px; font-weight: 650; color: #5f6c61; }
-.intro .intro-title { font-size: clamp(44px, 5.4vw, 76px); line-height: 1.08; font-weight: 500; letter-spacing: -3.5px; margin: 26px 0; }
-.intro .intro-title span { color: #71816b; }
-.intro p { color: #69736a; line-height: 1.8; font-size: 15px; }
-.intro-rule { width: 48px; height: 1px; background: #c5cec1; margin: 36px 0 20px; }
-.intro .intro-note { font-size: 12px; }
-.intro-note span { color: #254c39; margin-right: 8px; }
-.registration-card { background: #fff; border: 1px solid #e6e9e1; border-radius: 22px; padding: 44px; box-shadow: 0 12px 50px -30px #293f3a25; }
-.registration-card :is(h1, h2) { font-size: 28px; font-weight: 550; letter-spacing: -1px; line-height: 1.25; margin: 17px 0 10px; }
-.form-intro { color: #626e60; font-size: 16px; margin: 0 0 32px; }
-.registration-form { --danger: var(--registration-error); display: flex; flex-direction: column; gap: 24px; }
-.registration-form .label { font-size: 14px; font-weight: 550; }
-.registration-input { width: 100%; background: #fafbf8; border: 1px solid #879384; border-radius: 10px; min-height: 48px; box-shadow: none; font-size: 16px; }
-.registration-input:focus { outline: 2px solid #71816b; outline-offset: 2px; }
+button, a { touch-action: manipulation; }
+button { white-space: normal; }
+:is(button, a, input):focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+main:focus, .today-main h1:focus { outline: none; }
+.button { min-height: var(--touch-target); min-width: var(--touch-target); height: auto; padding-block: var(--space-3); border-radius: var(--radius-control); font-size: var(--text-body); white-space: normal; transition: background-color var(--motion-feedback) var(--motion-ease); }
+.button:active, .button[data-pressed="true"] { transform: none; }
+.button[data-focus-visible="true"] { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
+.page-shell { max-width: var(--page-width); margin: auto; min-height: 100dvh; padding: max(var(--space-10), env(safe-area-inset-top)) max(6%, env(safe-area-inset-right)) max(var(--space-10), env(safe-area-inset-bottom)) max(6%, env(safe-area-inset-left)); display: flex; flex-direction: column; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.header-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.today-main > .header-actions { margin-top: var(--space-6); }
+.skip-link { position: absolute; left: var(--space-5); top: var(--space-5); padding: var(--space-3) var(--space-4); background: var(--surface); color: var(--accent); border: var(--border-width) solid var(--field-border); border-radius: var(--radius-control); transform: translateY(-200%); z-index: 1; }
+.skip-link:focus { transform: none; }
+.brand { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-section); font-weight: var(--weight-strong); letter-spacing: var(--tracking-heading); max-width: 100%; flex-wrap: wrap; overflow-wrap: anywhere; }
+.brand-mark { display: block; flex-shrink: 0; width: 2.25rem; height: 2.25rem; }
+.account-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 9%; flex: 1; padding: var(--space-18) 0 var(--space-24); }
+.eyebrow { display: block; font-size: var(--text-caption); letter-spacing: .15em; font-weight: var(--weight-strong); color: var(--muted); }
+.intro .intro-title { font-size: clamp(2.75rem, 5.4vw, 4.75rem); line-height: var(--leading-heading); font-weight: 500; letter-spacing: var(--tracking-heading); margin: var(--space-6) 0; }
+.intro .intro-title span { color: var(--decorative-muted); }
+.intro p { color: var(--muted); line-height: 1.8; font-size: var(--text-body); }
+.intro-rule { width: var(--space-12); height: var(--border-width); background: var(--border); margin: var(--space-8) 0 var(--space-5); }
+.intro .intro-note { font-size: var(--text-caption); }
+.intro-note span { color: var(--accent); margin-right: var(--space-2); }
+.account-card, .surface-card { background: var(--surface); border: var(--border-width) solid var(--border); border-radius: var(--radius-card); padding: var(--space-10); box-shadow: var(--shadow-card); min-width: 0; }
+.account-card :is(h1, h2) { font-size: var(--text-title); font-weight: var(--weight-medium); letter-spacing: var(--tracking-heading); line-height: 1.25; margin: var(--space-4) 0 var(--space-3); }
+.form-intro { color: var(--muted); font-size: var(--text-body); margin: 0 0 var(--space-8); }
+.ledger-form { display: flex; flex-direction: column; gap: var(--space-6); container-type: inline-size; }
+.ledger-form .textfield { min-width: 0; }
+.ledger-form .label { font-size: var(--text-body); font-weight: var(--weight-medium); }
+.ledger-input { width: 100%; background: var(--field-background); border: var(--border-width) solid var(--field-border); border-radius: var(--radius-control); min-height: var(--control-height); box-shadow: none; font-size: max(16px, 1rem); scroll-margin-block: var(--space-6); }
+.ledger-input[aria-invalid="true"] { border-color: var(--danger); }
 .password-input { position: relative; }
-.password-input input { padding-right: 65px; }
-.password-toggle { position: absolute; right: 7px; top: 2px; min-height: 44px; min-width: 48px; color: #576a5a; font-size: 13px; }
-.registration-form .description { font-size: 13px; color: #626e60; line-height: 1.6; }
-.registration-form .field-error { white-space: normal; font-size: 13px; color: var(--registration-error); }
-.register-button { width: 100%; min-height: 49px; border-radius: 10px; background: #254c39; color: white; justify-content: space-between; padding: 0 20px; font-size: 13px; margin-top: 4px; }
-.form-footnote { text-align: center; color: #626e60; font-size: 14px; margin: 12px 0 0; }
-.form-error { font-size: 12px; line-height: 1.6; color: var(--registration-error); background: #fff5f3; border-radius: 8px; padding: 10px 12px; margin: 0; }
-.page-footer { display: flex; justify-content: space-between; border-top: 1px solid #e0e5da; padding-top: 22px; color: #626e60; font-size: 12px; }
-.success-content { outline: none; padding: 20px 0; }
-.success-content p { font-size: 16px; line-height: 1.8; color: #69736a; overflow-wrap: anywhere; }
-.success-mark { display: flex; align-items: center; justify-content: center; border-radius: 50%; width: 48px; height: 48px; background: #edf3e7; color: #254c39; font-size: 24px; margin-bottom: 28px; }
-@media (max-width: 760px) {
-  .registration-shell { padding: 25px 22px; }
-  .registration-layout { grid-template-columns: 1fr; gap: 32px; padding: 45px 0; }
-  .intro .intro-title { font-size: 45px; letter-spacing: -2px; margin: 18px 0; }
-  .intro .intro-title br:nth-child(2) { display: none; }
-  .login-layout .intro { display: none; }
-  .intro-rule, .intro .intro-note, .desktop-break { display: none; }
-  .intro p { font-size: 16px; }
-  .registration-card { padding: 30px 24px; }
-  .registration-card :is(h1, h2) { font-size: 25px; }
-  .page-footer { gap: 15px; flex-wrap: wrap; line-height: 1.7; }
+.password-input input { padding-right: calc(4.5rem + var(--space-2)); }
+.password-toggle { position: absolute; right: var(--space-1); top: var(--border-width); min-width: 3.5rem; color: var(--accent); font-size: var(--text-small); }
+/* Below 16rem of form space, give the password toggle its own row.
+   The rem threshold also responds to enlarged browser text. */
+@container (max-width: 16rem) {
+  .password-input { display: grid; gap: var(--space-2); }
+  .password-input input { padding-right: var(--space-3); }
+  .password-toggle { position: static; justify-self: end; }
+}
+.ledger-form .description { font-size: var(--text-small); color: var(--muted); line-height: 1.6; }
+.ledger-form .field-error { white-space: normal; font-size: var(--text-small); color: var(--danger); }
+.primary-action { width: 100%; min-height: var(--control-height); gap: var(--space-3); justify-content: space-between; padding: var(--space-4) var(--space-5); margin-top: var(--space-1); }
+.form-footnote { text-align: center; color: var(--muted); font-size: var(--text-small); margin: var(--space-3) 0 0; }
+.notice { font-size: var(--text-small); line-height: 1.6; border-radius: var(--radius-small); padding: var(--space-3) var(--space-4); margin: 0; overflow-wrap: anywhere; }
+.notice--danger { color: var(--danger); background: var(--danger-soft); }
+.notice--info { color: var(--info); background: var(--info-soft); }
+.notice--success { color: var(--success-soft-foreground); background: var(--success-soft); }
+.account-card > .notice { margin-bottom: var(--space-4); }
+.page-footer { display: flex; justify-content: space-between; gap: var(--space-4); border-top: var(--border-width) solid var(--border); padding-top: var(--space-6); color: var(--muted); font-size: var(--text-caption); }
+.success-content { outline: none; padding: var(--space-5) 0; }
+.success-content p { font-size: var(--text-body); line-height: 1.8; color: var(--muted); overflow-wrap: anywhere; }
+.success-mark { display: flex; align-items: center; justify-content: center; border-radius: 50%; width: var(--space-12); height: var(--space-12); background: var(--success-soft); color: var(--accent); font-size: var(--text-title); margin-bottom: var(--space-7); }
+.account-link { display: inline-flex; align-items: center; justify-content: center; min-height: var(--touch-target); min-width: var(--touch-target); padding-inline: var(--space-1); color: var(--link); font-size: inherit; font-weight: var(--weight-strong); text-decoration: underline; text-underline-offset: var(--space-1); }
+.today-main { width: min(100%, var(--reading-width)); margin: clamp(var(--space-12), 12vh, 9rem) auto; }
+.page-title { overflow-wrap: anywhere; margin: var(--space-4) 0 var(--space-8); font-size: clamp(2.25rem, 6vw, 3.75rem); font-weight: 500; line-height: var(--leading-heading); letter-spacing: var(--tracking-heading); }
+.spending-summary { background: var(--accent); color: var(--accent-foreground); padding: clamp(var(--space-6), 5vw, var(--space-12)); border-radius: var(--radius-card); min-height: 16.25rem; }
+.spending-summary h2 { font-size: var(--text-body); font-weight: var(--weight-medium); margin: 0 0 var(--space-5); color: var(--on-accent-muted); }
+.spending-summary :is(button:focus-visible, button[data-focus-visible="true"]) { outline-color: var(--accent-foreground); }
+.money-display { font-size: clamp(2.25rem, 6vw, 4.25rem); font-weight: var(--weight-medium); line-height: 1.16; letter-spacing: var(--tracking-heading); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; margin: 0; }
+.summary-date { margin-top: var(--space-7); border-top: var(--border-width) solid var(--on-accent-border); padding-top: var(--space-4); color: var(--on-accent-muted); }
+.empty-day, .spending-summary button { margin-top: var(--space-3); }
+.daily-note { color: var(--muted); margin: var(--space-5) 0; font-size: var(--text-body); }
+
+/* Compact layout policy: <=760px wide, or <=1024px wide and <=540px high.
+   CSS variables cannot be used in media query conditions. */
+@media (max-width: 760px), (max-width: 1024px) and (max-height: 540px) {
+  .page-shell { padding: max(var(--space-6), env(safe-area-inset-top)) max(var(--compact-gutter), env(safe-area-inset-right)) max(var(--space-6), env(safe-area-inset-bottom)) max(var(--compact-gutter), env(safe-area-inset-left)); }
+  .account-layout { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 0; padding: var(--space-8) 0; }
+  .intro { display: none; }
+  .account-card { width: 100%; max-width: var(--form-width); justify-self: center; padding: var(--space-7) var(--compact-card-padding); }
+  .account-card :is(h1, h2) { text-wrap: balance; }
+  .form-intro { margin-bottom: var(--space-7); }
+  .page-footer { justify-content: center; text-align: center; line-height: 1.7; }
+  .page-footer span + span { display: none; }
+  .success-content { padding: var(--space-2) 0; }
+  .today-main { margin-block: var(--space-12) var(--space-8); }
+  .today-main h1 { font-size: clamp(1.75rem, 9vw, 2.5rem); margin-block: var(--space-3) var(--space-7); text-wrap: balance; }
+  .money-display { font-size: clamp(2.25rem, 10vw, 3.5rem); }
+  .summary-date { line-height: 1.7; }
 }
 
-.account-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-size: 14px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
-.registration-form .text-field { min-width: 0; }
-.registration-card > .form-error { margin-bottom: 16px; }
-.today-nav { display: flex; align-items: center; justify-content: space-between; }
-.today-nav button, .total-card button { min-height: 44px; }
-.today-main { width: min(100%, 680px); margin: clamp(48px, 12vh, 140px) auto; }
-.today-main h1 { margin: 16px 0 32px; font-size: clamp(36px, 6vw, 60px); font-weight: 500; line-height: 1.08; letter-spacing: -.05em; }
-.today-main h1:focus { outline: none; }
-.total-card { background: var(--accent); color: white; padding: clamp(24px, 5vw, 48px); border-radius: 22px; }
-.total-card h2 { font-size: 16px; font-weight: 550; margin-bottom: 20px; color: #dcebd9; }
-.daily-amount { font-size: clamp(36px, 6vw, 68px); font-weight: 550; line-height: 1.16; letter-spacing: -.045em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.total-date { margin-top: 28px; border-top: 1px solid #78907a; padding-top: 16px; color: #e1ecdf; }
-.empty-day, .total-card button { margin-top: 12px; }
-.daily-note { color: #536554; margin: 18px 0; font-size: 14px; }
+/* Reduced viewport above a software keyboard. Content must remain scrollable. */
+@media (max-height: 540px) {
+  .account-layout { padding-block: var(--space-6); align-content: start; }
+  .account-card { align-self: start; }
+}
+@media (max-width: 1024px) and (max-height: 540px) {
+  .today-main { margin-block: var(--space-6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

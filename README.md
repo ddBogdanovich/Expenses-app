@@ -14,6 +14,10 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 `src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. Open `/` to see today’s total. Signed-out visitors go to `/login`; new users can follow the registration link to `/register`. Successful login opens the main page, and registration offers a continuation from its confirmation screen. Tokens stay in memory. Logging out or reloading requires a fresh login.
 
+The account and daily spending screens adapt to phones, including iPhone Pro Max portrait and landscape widths. Phone layouts prioritize the form, use large tap targets and safe-area spacing, and allow scrolling above the software keyboard. See [Mobile layout and accessibility](docs/learning/014-mobile-layout-and-accessibility.md) for implementation choices and browser verification limits.
+
+The frontend follows the [PocketLedger design guide](docs/design/README.md), with shared theme tokens, page/notice patterns, and a feature-owned spending summary. Sign in and select **Design reference** in the development header for interactive local examples. Direct `/design-system` visits require login and API session verification; this reference page is excluded from production builds. See [Learning note 015](docs/learning/015-frontend-design-system.md) and [ADR 0013](docs/decisions/0013-code-backed-frontend-design-system.md).
+
 To install dependencies and verify the frontend:
 
 ```shell

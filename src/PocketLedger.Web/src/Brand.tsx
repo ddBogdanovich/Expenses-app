@@ -1,3 +1,3 @@
 export default function Brand() {
-  return <div className="brand"><span className="brand-mark" aria-hidden="true">p<span>•</span></span>PocketLedger</div>
+  return <div className="brand"><img className="brand-mark" src="/pocketledger-mark.svg" alt="" width="36" height="36" />PocketLedger</div>
 }

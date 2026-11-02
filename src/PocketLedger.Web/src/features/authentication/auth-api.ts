@@ -11,6 +11,15 @@ export type AuthResult =
 
 export type AuthMode = 'login' | 'register'
 
+export async function getSessionStatus(token: string, signal: AbortSignal): Promise<'authorized' | 'unauthorized'> {
+  const response = await fetch('/api/auth/me', {
+    headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal,
+  })
+  if (response.status === 401 || response.status === 403) return 'unauthorized'
+  if (response.status !== 200) throw new Error('Unable to verify session')
+  return 'authorized'
+}
+
 export async function authenticate(mode: AuthMode, credentials: Credentials): Promise<AuthResult> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)

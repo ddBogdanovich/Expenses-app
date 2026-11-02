@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@heroui/react'
-import Brand from '../../Brand'
+import PageShell from '../../ui/PageShell'
+import SpendingSummary from './SpendingSummary'
 import { requestTimeoutMs } from '../../request-policy'
-import { formatTotal, getDailyTotal } from './today-api'
+import { getDailyTotal } from './today-api'
 import type { DailyTotal } from './today-api'
 
 const businessTimeZone = 'Europe/Warsaw'
 const warsawDay = new Intl.DateTimeFormat('sv-SE', { timeZone: businessTimeZone })
-const displayDate = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeZone: 'UTC' })
 const minuteMs = 60_000
 const sessionEnded = 'Your session has ended. Log in again to see today’s spending.'
 
-type Props = { token: string; onEndSession: (message?: string) => void }
+type Props = { token: string; onEndSession: (message?: string) => void; onOpenDesignSystem?: () => void }
 
-export default function TodayPage({ token, onEndSession }: Props) {
+export default function TodayPage({ token, onEndSession, onOpenDesignSystem }: Props) {
   const [total, setTotal] = useState<DailyTotal | null>(null)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const heading = useRef<HTMLHeadingElement>(null)
-  useEffect(() => { heading.current?.focus() }, [])
+  useEffect(() => { heading.current?.focus({ preventScroll: true }) }, [])
 
   useEffect(() => {
     const lifetime = new AbortController()
@@ -65,24 +65,18 @@ export default function TodayPage({ token, onEndSession }: Props) {
   }, [token, attempt, onEndSession])
 
   return (
-    <div className="registration-shell today-shell">
-      <header className="today-nav"><Brand /><Button variant="outline" onPress={() => onEndSession()}>Log out</Button></header>
-      <main className="today-main">
+    <PageShell headerAction={<nav className="header-actions" aria-label="Account">
+      {onOpenDesignSystem && <Button variant="ghost" onPress={onOpenDesignSystem}>Design reference</Button>}
+      <Button variant="outline" onPress={() => onEndSession()}>Log out</Button>
+    </nav>}>
+      <main id="main-content" className="today-main" tabIndex={-1}>
         <span className="eyebrow">DAILY OVERVIEW</span>
-        <h1 ref={heading} tabIndex={-1}>Today’s spending</h1>
-        <section className="total-card" aria-labelledby="total-label">
-          <h2 id="total-label">Total spent today</h2>
-          <div role="status" aria-live="polite" aria-atomic="true">
-            {total ? <>
-              <p className="daily-amount">{formatTotal(total.totalGrosz)}</p>
-              <p className="total-date"><time dateTime={total.purchaseDate}>{displayDate.format(new Date(total.purchaseDate))}</time> · Warsaw</p>
-              {total.totalGrosz === '0' && <p className="empty-day">No expenses recorded today.</p>}
-            </> : failed ? <p>We couldn’t load today’s spending.</p> : <p>Loading today’s spending…</p>}
-          </div>
-          {failed && <Button variant="secondary" onPress={() => { setFailed(false); setAttempt(value => value + 1) }}>Try again</Button>}
-        </section>
+        <h1 className="page-title" ref={heading} tabIndex={-1}>Today’s spending</h1>
+        <SpendingSummary state={total ? { status: 'ready', total } : failed ? {
+          status: 'error', onRetry: () => { setFailed(false); setAttempt(value => value + 1) },
+        } : { status: 'loading' }} />
         <p className="daily-note">Includes all your purchases dated today in Warsaw.</p>
       </main>
-    </div>
+    </PageShell>
   )
 }

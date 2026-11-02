@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import Brand from '../../Brand'
+import PageShell from '../../ui/PageShell'
+import Notice from '../../ui/Notice'
 import type { FormEvent } from 'react'
 import { Button, Description, FieldError, Form, Input, Label, TextField } from '@heroui/react'
 import type { AuthError, AuthMode } from './auth-api'
@@ -13,8 +14,6 @@ type AccountPageProps = {
 
 export default function AccountPage({ mode, onAuthenticated, notice }: AccountPageProps) {
   const registering = mode === 'register'
-  const IntroTitle = registering ? 'h1' : 'div'
-  const FormHeading = registering ? 'h2' : 'h1'
   const submitLabel = registering ? 'Create account' : 'Log in'
   const pendingLabel = registering ? 'Creating your account…' : 'Logging in…'
   const [email, setEmail] = useState('')
@@ -56,35 +55,34 @@ export default function AccountPage({ mode, onAuthenticated, notice }: AccountPa
   }
 
   return (
-    <div className="registration-shell">
-      <header><Brand /></header>
-      <main className={registering ? "registration-layout" : "registration-layout login-layout"}>
+    <PageShell footer={<><span>Your everyday budget, one day at a time.</span><span>Made for a little more peace of mind.</span></>}>
+      <main id="main-content" tabIndex={-1} className="account-layout">
         <section className="intro" aria-labelledby="intro-heading">
           <span className="eyebrow">A LITTLE CLARITY, EVERY DAY</span>
-          <IntroTitle id="intro-heading" className="intro-title">More life.<br />Less money<br /> <span>on your mind.</span></IntroTitle>
+          <div id="intro-heading" className="intro-title">More life.<br />Less money<br /> <span>on your mind.</span></div>
           <p>A calmer place for your everyday spending.<br className="desktop-break" /> Start with a little clarity. Build from there.</p>
           <div className="intro-rule" />
           <p className="intro-note"><span aria-hidden="true">↗</span> Small steps. A clearer picture.</p>
         </section>
-        <section className="registration-card" aria-labelledby="form-heading">
+        <section className="account-card" aria-labelledby="form-heading">
           {accessToken ? (
-            <div className="success-content" role="status" tabIndex={-1} ref={(element) => element?.focus()}>
+            <div className="success-content" role="status" tabIndex={-1} ref={(element) => element?.focus({ preventScroll: true })}>
               <span className="success-mark" aria-hidden="true">✓</span>
               <span className="eyebrow">A FRESH START</span>
-              <h2 id="form-heading">You’re all set.</h2>
+              <h1 id="form-heading">You’re all set.</h1>
               <p>Your account has been created for <strong>{email.trim()}</strong>.</p>
-              <Button className="register-button" onPress={() => onAuthenticated(accessToken)}>View today’s spending <span aria-hidden="true">→</span></Button>
+              <Button className="primary-action" onPress={() => onAuthenticated(accessToken)}>View today’s spending <span aria-hidden="true">→</span></Button>
             </div>
           ) : (
             <>
               <span className="eyebrow">{registering ? 'WELCOME TO POCKETLEDGER' : 'YOUR ACCOUNT'}</span>
-              <FormHeading id="form-heading">{registering ? 'Make room for clarity.' : 'Log in'}</FormHeading>
+              <h1 id="form-heading">{registering ? 'Make room for clarity.' : 'Log in'}</h1>
               <p className="form-intro">{registering ? 'Create your account to get started.' : 'See what you’ve spent today.'}</p>
-              {notice && <p className="form-error" role="status">{notice}</p>}
-              <Form className="registration-form" onSubmit={submit} validationErrors={fieldErrors}>
+              {notice && <Notice tone="info">{notice}</Notice>}
+              <Form className="ledger-form" onSubmit={submit} validationErrors={fieldErrors}>
                 <TextField isRequired name="email" type={registering ? 'email' : 'text'} value={email} onChange={(value) => { setEmail(value); clearEditedFieldError('email') }} isDisabled={pending}>
                   <Label>Email address</Label>
-                  <Input inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete={registering ? 'email' : 'username'} placeholder="you@example.com" className="registration-input" />
+                  <Input inputMode="email" enterKeyHint="next" autoCapitalize="none" spellCheck={false} autoComplete={registering ? 'email' : 'username'} placeholder="you@example.com" className="ledger-input" />
                   <FieldError />
                 </TextField>
                 <TextField isRequired name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(value) => { setPassword(value); clearEditedFieldError('password') }}
@@ -98,7 +96,7 @@ export default function AccountPage({ mode, onAuthenticated, notice }: AccountPa
                   }}>
                   <Label>Password</Label>
                   <div className="password-input">
-                    <Input autoComplete={registering ? 'new-password' : 'current-password'} placeholder={registering ? 'Create a password' : 'Enter your password'} className="registration-input" />
+                    <Input enterKeyHint="go" autoCapitalize="none" spellCheck={false} autoComplete={registering ? 'new-password' : 'current-password'} placeholder={registering ? 'Create a password' : 'Enter your password'} className="ledger-input" />
                     <Button type="button" variant="ghost" size="sm" className="password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} isDisabled={pending} onPress={() => setShowPassword(!showPassword)}>
                       {showPassword ? 'Hide' : 'Show'}
                     </Button>
@@ -106,8 +104,8 @@ export default function AccountPage({ mode, onAuthenticated, notice }: AccountPa
                   {registering && <Description>Use {passwordPolicy.minimumLength}–{passwordPolicy.maximumLength} characters. A few words work well.</Description>}
                   <FieldError />
                 </TextField>
-                {error ? <p className="form-error" role="alert">{error.message}</p> : null}
-                <Button type="submit" className="register-button" isPending={pending} isDisabled={pending}>
+                {error ? <Notice tone="danger">{error.message}</Notice> : null}
+                <Button type="submit" className="primary-action" isPending={pending} isDisabled={pending}>
                   {pending ? pendingLabel : submitLabel}<span aria-hidden="true">↗</span>
                 </Button>
               </Form>
@@ -117,7 +115,6 @@ export default function AccountPage({ mode, onAuthenticated, notice }: AccountPa
           )}
         </section>
       </main>
-      <footer className="page-footer"><span>Your everyday budget, one day at a time.</span><span>Made for a little more peace of mind.</span></footer>
-    </div>
+    </PageShell>
   )
 }

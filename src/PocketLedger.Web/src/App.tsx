@@ -1,30 +1,63 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import AccountPage from './features/authentication/AccountPage'
 import TodayPage from './features/today/TodayPage'
+
+// Vite removes the reference route and its imports from production builds.
+const DesignSystemRoute = import.meta.env.DEV
+  ? lazy(() => import('./design-system/DesignSystemRoute'))
+  : null
 
 export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
-  const mode = window.location.pathname === '/register' ? 'register' : 'login'
+  const [path, setPath] = useState(window.location.pathname)
+  const returnToReference = useRef(Boolean(DesignSystemRoute && path === '/design-system'))
+  const mode = path === '/register' ? 'register' : 'login'
+  const referenceOpen = Boolean(DesignSystemRoute && path === '/design-system')
+
+  const navigate = useCallback((nextPath: string, replace = false) => {
+    if (replace) window.history.replaceState(null, '', nextPath)
+    else window.history.pushState(null, '', nextPath)
+    setPath(nextPath)
+  }, [])
+
+  useEffect(() => {
+    function onPopState() {
+      const nextPath = window.location.pathname
+      if (!accessToken && nextPath !== '/register') navigate('/login', true)
+      else setPath(nextPath)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [accessToken, navigate])
 
   useEffect(() => {
     if (!accessToken && mode === 'login') window.history.replaceState(null, '', '/login')
-    document.title = `${accessToken ? 'Today' : mode === 'register' ? 'Create your account' : 'Log in'} · PocketLedger`
-  }, [accessToken, mode])
+    document.title = `${accessToken ? referenceOpen ? 'Design reference' : 'Today' : mode === 'register' ? 'Create your account' : 'Log in'} · PocketLedger`
+  }, [accessToken, mode, referenceOpen])
 
   const endSession = useCallback((message = '') => {
-    window.history.replaceState(null, '', '/login')
+    returnToReference.current = false
+    navigate('/login', true)
     setNotice(message)
     setAccessToken(null)
-  }, [])
+  }, [navigate])
 
   function startSession(token: string) {
-    window.history.replaceState(null, '', '/')
+    navigate(returnToReference.current ? '/design-system' : '/', true)
+    returnToReference.current = false
     setAccessToken(token)
     setNotice('')
   }
 
-  return accessToken
-    ? <TodayPage token={accessToken} onEndSession={endSession} />
-    : <AccountPage mode={mode} onAuthenticated={startSession} notice={notice} />
+  if (!accessToken) return <AccountPage mode={mode} onAuthenticated={startSession} notice={notice} />
+
+  if (referenceOpen && DesignSystemRoute) {
+    return <Suspense fallback={<p role="status">Loading design reference…</p>}>
+      <DesignSystemRoute token={accessToken} onBack={() => navigate('/')} onEndSession={endSession} />
+    </Suspense>
+  }
+
+  return <TodayPage token={accessToken} onEndSession={endSession}
+    onOpenDesignSystem={DesignSystemRoute ? () => navigate('/design-system') : undefined} />
 }

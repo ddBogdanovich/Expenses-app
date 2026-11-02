@@ -17,7 +17,7 @@ TypeScript types disappear from the emitted JavaScript. They cannot validate an 
 
 ## How the page starts
 
-`index.html` defines the document and a `root` element. `src/main.tsx` attaches React to that element, imports global CSS, and renders `App` under `StrictMode`. `src/App.tsx` renders the registration feature.
+`index.html` defines the document and a `root` element. `src/main.tsx` attaches React to that element, imports global CSS, and renders `App` under `StrictMode`. `src/App.tsx` selects login/registration or the authenticated daily-spending feature. `App` also selects the lazy-loaded design reference at `/design-system` in Vite development mode only, behind its session guard and an API verification gate. `main.tsx` always mounts `App`.
 
 StrictMode helps expose problematic component behavior during development. Components should render predictably and avoid changing external state during rendering.
 
@@ -46,3 +46,7 @@ The API already exports OpenTelemetry. The frontend currently contributes proces
 5. Why does a mobile-friendly browser app still need a separate decision for native iOS packaging?
 
 Project paths now use PocketLedger; see [Learning note 009](009-renaming-project-identity.md). The local database volume now has the explicit name `pocketledger-postgres-data`; stored schemas and business rules are unchanged.
+
+## Product design foundation
+
+The [design guide](../design/README.md) now defines product-specific visual and interaction rules. `src/styles/tokens.css` maps the PocketLedger light theme to HeroUI, `src/ui` holds shared presentation, and feature-specific presentation stays with its feature. See [Learning note 015](015-frontend-design-system.md) for composition and the development reference page.

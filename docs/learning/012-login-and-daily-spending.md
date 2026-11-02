@@ -17,3 +17,7 @@ PostgreSQL widens the sum of bigint values to numeric. The API returns the integ
 1. Log in and open the browser network panel. Which request identifies the business date? Where does the owner ID come from?
 2. Use the expense API to backdate the ticket to yesterday. Return to the tab. What changes on the main page?
 3. Call the daily-total endpoint without a token. Compare the response with an authenticated account that has no spending today.
+
+## Presentation reuse
+
+`TodayPage` retains fetching, refresh, and session behavior. `SpendingSummary` renders loading/error/ready states, precise formatted PLN, and retry. The same feature-owned component appears in the development design reference; `PageShell` supplies the shared page frame. See the [design guide](../design/README.md) and [Learning note 015](015-frontend-design-system.md).

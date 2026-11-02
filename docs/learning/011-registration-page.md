@@ -34,3 +34,7 @@ Registration retains the server error as one object containing its message and o
 The request uses an `AbortController` with the shared `requestTimeoutMs` (15 seconds). The deadline covers response headers and reading the response body; `finally` clears the timer. An aborted request releases the form and offers retry feedback. Cancellation cannot undo an account already saved on the server, so the timeout message acknowledges that account creation may have succeeded. Tests use a controlled clock to verify both stalled headers and a stalled body without waiting in real time.
 
 Inputs use 16px text, with larger labels and supporting copy. Inline errors and invalid field labels use the same darker error token as the form-level alert, keeping their text readable against the white card. These changes preserve the minimal layout while prioritizing reading and recovery over decorative compactness.
+
+## Shared design patterns
+
+The account page now composes `PageShell` for its frame and `Notice` for informational session messages and request failures. Form controls retain HeroUI behavior, with `.ledger-form`, `.ledger-input`, and `.primary-action` recipes and centralized theme tokens. See the [design guide](../design/README.md) and [Learning note 015](015-frontend-design-system.md).
