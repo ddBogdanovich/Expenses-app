@@ -26,3 +26,11 @@ From `src/PocketLedger.Web`, run `npm ci`, `npm test`, `npm run build`, and `npm
 2. What happens to the access token after a browser refresh?
 3. Change a mocked response from 201 to 409. Explain why the form should stay editable.
 4. Why does production still need `/api` routing after Vite builds successfully?
+
+## Recoverable errors and readable controls
+
+Registration retains the server error as one object containing its message and optional field. Editing the password leaves an email conflict visible; editing the email clears that conflict. This avoids separate message and field-error state drifting apart. General request errors clear when the user edits either field or retries.
+
+The request uses an `AbortController` with the feature-owned `registrationRequestTimeoutMs` (15 seconds). The deadline covers response headers and reading the response body; `finally` clears the timer. An aborted request releases the form and offers retry feedback. Cancellation cannot undo an account already saved on the server, so the timeout message acknowledges that account creation may have succeeded. Tests use a controlled clock to verify both stalled headers and a stalled body without waiting in real time.
+
+Inputs use 16px text, with larger labels and supporting copy. Inline errors and invalid field labels use the same darker error token as the form-level alert, keeping their text readable against the white card. These changes preserve the minimal layout while prioritizing reading and recovery over decorative compactness.

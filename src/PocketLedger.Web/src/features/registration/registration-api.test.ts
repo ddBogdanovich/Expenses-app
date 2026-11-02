@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { registerAccount } from './registration-api'
+import { registerAccount, registrationRequestTimeoutMs } from './registration-api'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe('registration HTTP boundary', () => {
   it.each([
@@ -18,5 +18,29 @@ describe('registration HTTP boundary', () => {
     const result = await registerAccount({ email: ' a@example.com ', password: '  password  ' })
     expect(result).toMatchObject({ success: false, field: 'password' })
     expect(fetchMock.mock.calls[0][1].body).toBe('{"email":"a@example.com","password":"  password  "}')
+  })
+})
+
+
+describe('registration timeout recovery', () => {
+  it.each(['headers', 'body'])('aborts a stalled response during %s and permits retry', async (phase) => {
+    vi.useFakeTimers()
+    let requestSignal!: AbortSignal
+    const fetchMock = vi.fn((_url, options) => {
+      requestSignal = options.signal
+      const stalled = new Promise<never>((_resolve, reject) => {
+        requestSignal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+      })
+      return phase === 'headers' ? stalled : Promise.resolve({ status: 201, json: () => stalled })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = registerAccount({ email: 'a@example.com', password: 'a long password' })
+    await vi.advanceTimersByTimeAsync(registrationRequestTimeoutMs)
+    expect(await pending).toMatchObject({ success: false, message: expect.stringContaining('timed out') })
+    expect(requestSignal.aborted).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"accessToken":"retry"}', { status: 201 })))
+    expect((await registerAccount({ email: 'a@example.com', password: 'a long password' })).success).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

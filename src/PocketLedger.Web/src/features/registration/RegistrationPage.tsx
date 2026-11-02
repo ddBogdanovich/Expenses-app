@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button, Description, FieldError, Form, Input, Label, TextField } from '@heroui/react'
+import type { RegistrationError } from './registration-api'
 import { passwordPolicy, registerAccount } from './registration-api'
 
 export default function RegistrationPage() {
@@ -8,8 +9,12 @@ export default function RegistrationPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [error, setError] = useState<RegistrationError | null>(null)
+  const fieldErrors = error?.field ? { [error.field]: error.message } : {}
+
+  function clearEditedFieldError(field: 'email' | 'password') {
+    setError((current) => current?.field && current.field !== field ? current : null)
+  }
   // Tokens stay in memory; a future authenticated screen can consume this session.
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const submitting = useRef(false)
@@ -19,8 +24,7 @@ export default function RegistrationPage() {
     if (submitting.current) return
     submitting.current = true
     setPending(true)
-    setError('')
-    setFieldErrors({})
+    setError(null)
     try {
       const result = await registerAccount({ email, password })
       if (result.success) {
@@ -28,8 +32,7 @@ export default function RegistrationPage() {
         setAccessToken(result.accessToken)
         document.title = 'Account created · PocketLedger'
       } else {
-        setError(result.message)
-        if (result.field) setFieldErrors({ [result.field]: result.message })
+        setError(result)
       }
     } finally {
       submitting.current = false
@@ -63,12 +66,12 @@ export default function RegistrationPage() {
               <h2 id="form-heading">Make room for clarity.</h2>
               <p className="form-intro">Create your account to get started.</p>
               <Form className="registration-form" onSubmit={submit} validationErrors={fieldErrors}>
-                <TextField isRequired name="email" type="email" value={email} onChange={(value) => { setEmail(value); setError(''); setFieldErrors({}) }} isDisabled={pending}>
+                <TextField isRequired name="email" type="email" value={email} onChange={(value) => { setEmail(value); clearEditedFieldError('email') }} isDisabled={pending}>
                   <Label>Email address</Label>
                   <Input autoComplete="email" placeholder="you@example.com" className="registration-input" />
                   <FieldError />
                 </TextField>
-                <TextField isRequired name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(value) => { setPassword(value); setError(''); setFieldErrors({}) }}
+                <TextField isRequired name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(value) => { setPassword(value); clearEditedFieldError('password') }}
                   minLength={passwordPolicy.minimumLength} maxLength={passwordPolicy.maximumLength} isDisabled={pending}
                   validate={(value) => {
                     if (value.trim().length === 0) return 'Enter a password.'
@@ -87,7 +90,7 @@ export default function RegistrationPage() {
                   <Description>Use {passwordPolicy.minimumLength}–{passwordPolicy.maximumLength} characters. A few words work well.</Description>
                   <FieldError />
                 </TextField>
-                {error ? <p className="form-error" role="alert">{error}</p> : null}
+                {error ? <p className="form-error" role="alert">{error.message}</p> : null}
                 <Button type="submit" className="register-button" isPending={pending} isDisabled={pending}>
                   {pending ? 'Creating your account…' : 'Create account'}<span aria-hidden="true">↗</span>
                 </Button>
