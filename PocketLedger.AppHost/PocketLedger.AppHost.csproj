@@ -15,8 +15,8 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.JavaScript" />
-    <PackageReference Include="MessagePack" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
 
 </Project>
