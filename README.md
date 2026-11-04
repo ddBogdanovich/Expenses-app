@@ -10,6 +10,10 @@ See [the expense implementation guide](docs/learning/008-expense-aggregate-and-o
 
 See [authentication contracts and tests](docs/learning/005-authentication-tests-first.md), [the DDD implementation guide](docs/learning/006-account-authentication.md), and [ADR 0005](docs/decisions/0005-account-authentication.md).
 
+## Keycloak milestone in progress
+
+The default password/JWT flow remains current. Phase 1 is introducing an explicitly selected development preview; it is not a production authentication change. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed.
+
 ## Frontend
 
 `src/PocketLedger.Web` contains a React and TypeScript application built with Vite, with **HeroUI v3** and Tailwind CSS v4 installed. Open `/` to see today’s total. Signed-out visitors go to `/login`; new users can follow the registration link to `/register`. Successful login opens the main page, and registration offers a continuation from its confirmation screen. Tokens stay in memory. Logging out or reloading requires a fresh login.
