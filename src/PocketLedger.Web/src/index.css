@@ -12,7 +12,7 @@ main:focus, .today-main h1:focus { outline: none; }
 .button { min-height: var(--touch-target); min-width: var(--touch-target); height: auto; padding-block: var(--space-3); border-radius: var(--radius-control); font-size: var(--text-body); white-space: normal; transition: background-color var(--motion-feedback) var(--motion-ease); }
 .button:active, .button[data-pressed="true"] { transform: none; }
 .button[data-focus-visible="true"] { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
-.page-shell { max-width: var(--page-width); margin: auto; min-height: 100dvh; padding: max(var(--space-10), env(safe-area-inset-top)) max(6%, env(safe-area-inset-right)) max(var(--space-10), env(safe-area-inset-bottom)) max(6%, env(safe-area-inset-left)); display: flex; flex-direction: column; }
+.page-shell { container: page / inline-size; max-width: var(--page-width); margin: auto; min-height: 100dvh; padding: max(var(--space-10), env(safe-area-inset-top)) max(6%, env(safe-area-inset-right)) max(var(--space-10), env(safe-area-inset-bottom)) max(6%, env(safe-area-inset-left)); display: flex; flex-direction: column; }
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
 .header-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .today-main > .header-actions { margin-top: var(--space-6); }
@@ -69,6 +69,14 @@ main:focus, .today-main h1:focus { outline: none; }
 .summary-date { margin-top: var(--space-7); border-top: var(--border-width) solid var(--on-accent-border); padding-top: var(--space-4); color: var(--on-accent-muted); }
 .empty-day, .spending-summary button { margin-top: var(--space-3); }
 .daily-note { color: var(--muted); margin: var(--space-5) 0; font-size: var(--text-body); }
+
+/* Available content width responds to text enlargement as well as viewport size.
+   47.5rem is the existing 760px compact threshold at default text size. */
+@container page (max-width: 47.5rem) {
+  .account-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .intro { display: none; }
+  .account-card { width: 100%; max-width: var(--form-width); justify-self: center; }
+}
 
 /* Compact layout policy: <=760px wide, or <=1024px wide and <=540px high.
    CSS variables cannot be used in media query conditions. */

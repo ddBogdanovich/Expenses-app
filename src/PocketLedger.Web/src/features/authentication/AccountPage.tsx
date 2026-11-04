@@ -55,7 +55,7 @@ export default function AccountPage({ mode, onAuthenticated, notice }: AccountPa
   }
 
   return (
-    <PageShell footer={<><span>Your everyday budget, one day at a time.</span><span>Made for a little more peace of mind.</span></>}>
+    <PageShell headerAction={import.meta.env.DEV ? <a className="account-link" href="/api/auth/preview/start">Try Keycloak preview</a> : undefined} footer={<><span>Your everyday budget, one day at a time.</span><span>Made for a little more peace of mind.</span></>}>
       <main id="main-content" tabIndex={-1} className="account-layout">
         <section className="intro" aria-labelledby="intro-heading">
           <span className="eyebrow">A LITTLE CLARITY, EVERY DAY</span>

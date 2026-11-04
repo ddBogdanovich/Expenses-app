@@ -15,8 +15,17 @@ internal sealed class UserAccountConfiguration : IEntityTypeConfiguration<UserAc
         builder.Property(account => account.Email).HasConversion(
             email => email.Value,
             value => ParseEmail(value)).HasMaxLength(EmailAddress.MaximumLength).IsRequired();
-        builder.HasIndex(account => account.Email).IsUnique();
-        builder.Property(account => account.PasswordHash).HasMaxLength(PasswordHashMaximumLength).IsRequired();
+        builder.HasIndex(account => account.Email).IsUnique().HasFilter("\"PasswordHash\" IS NOT NULL");
+        builder.OwnsOne(account => account.ExternalIdentity, identity =>
+        {
+            identity.Property(value => value.Issuer).HasColumnName("ExternalIssuer").HasMaxLength(ExternalIdentity.MaximumIssuerLength).IsRequired();
+            identity.Property(value => value.Subject).HasColumnName("ExternalSubject").HasMaxLength(ExternalIdentity.MaximumSubjectLength).IsRequired();
+            identity.HasIndex(value => new { value.Issuer, value.Subject }).IsUnique().HasDatabaseName("IX_UserAccounts_ExternalIdentity");
+        });
+        builder.ToTable(table => table.HasCheckConstraint("CK_UserAccounts_CredentialKind",
+            "(\"PasswordHash\" IS NOT NULL AND \"ExternalIssuer\" IS NULL AND \"ExternalSubject\" IS NULL) OR " +
+            "(\"PasswordHash\" IS NULL AND \"ExternalIssuer\" IS NOT NULL AND \"ExternalSubject\" IS NOT NULL)"));
+        builder.Property(account => account.PasswordHash).HasMaxLength(PasswordHashMaximumLength);
     }
 
     private static EmailAddress ParseEmail(string value) => EmailAddress.TryCreate(value, out var email)

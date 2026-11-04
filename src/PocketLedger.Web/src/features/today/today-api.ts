@@ -1,8 +1,8 @@
 export type DailyTotal = { purchaseDate: string; totalGrosz: string }
 
-export async function getDailyTotal(token: string, signal: AbortSignal): Promise<DailyTotal | 'unauthorized'> {
+export async function getDailyTotal(token: string, signal: AbortSignal, preview = false): Promise<DailyTotal | 'unauthorized'> {
   const response = await fetch('/api/expenses/today', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: preview ? { 'X-PocketLedger-Auth': 'preview' } : { Authorization: `Bearer ${token}` },
     cache: 'no-store',
     signal,
   })

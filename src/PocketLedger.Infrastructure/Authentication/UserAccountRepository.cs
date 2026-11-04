@@ -8,7 +8,12 @@ namespace PocketLedger.Infrastructure.Authentication;
 internal sealed class UserAccountRepository(ExpensesDbContext context) : IUserAccountRepository
 {
     public Task<UserAccount?> FindByEmailAsync(EmailAddress email, CancellationToken cancellationToken) =>
-        context.Set<UserAccount>().AsNoTracking().SingleOrDefaultAsync(account => account.Email == email, cancellationToken);
+        context.Set<UserAccount>().AsNoTracking().SingleOrDefaultAsync(account => account.PasswordHash != null && account.Email == email, cancellationToken);
+
+    public Task<UserAccount?> FindByExternalIdentityAsync(ExternalIdentity identity, CancellationToken cancellationToken) =>
+        context.Set<UserAccount>().AsNoTracking().SingleOrDefaultAsync(account =>
+            account.ExternalIdentity != null && account.ExternalIdentity.Issuer == identity.Issuer &&
+            account.ExternalIdentity.Subject == identity.Subject, cancellationToken);
 
     public async Task<bool> TryAddAsync(UserAccount account, CancellationToken cancellationToken)
     {
@@ -19,9 +24,9 @@ internal sealed class UserAccountRepository(ExpensesDbContext context) : IUserAc
             return true;
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException
-        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_UserAccounts_Email" })
+        { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_UserAccounts_Email" or "IX_UserAccounts_ExternalIdentity" })
         {
-            context.Entry(account).State = EntityState.Detached;
+            context.ChangeTracker.Clear();
             return false;
         }
     }

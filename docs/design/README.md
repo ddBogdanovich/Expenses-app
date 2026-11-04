@@ -55,6 +55,8 @@ Use the named `--space-*` scale, based on quarter-rem increments, rather than ad
 
 Use `.account-layout` and `.account-card` for account forms only. Desktop account pages can show the supporting introduction beside the form. `.today-main` uses `--reading-width` for a focused daily overview. New authenticated screens should start with the shell and their own task-appropriate content, not copied registration markup.
 
+A named `page` container additionally collapses account columns when its available content width is at most `47.5rem` (the existing 760px threshold at default text). This responds to enlarged root text: the 768px tablet at 200% must not retain a narrow form beside the introduction. Both the application and hosted preview compile the same rule.
+
 The compact layout policy is width <=760 CSS px, or width <=1024px together with height <=540px. At compact sizes, account forms have one column and the introduction is hidden. At height <=540px, reduce vertical padding and keep content at the start. These literal media-query thresholds are documented here because native CSS variables cannot be used in media query conditions. Do not introduce slightly different copies of these breakpoints per page.
 
 Use dynamic minimum viewport height and allow content to grow and scroll. Respect `env(safe-area-inset-*)` on each edge. Do not fix forms or primary submit actions to a viewport height that can be covered by a keyboard. Preserve input text at `max(16px, 1rem)` and scalable password-toggle clearance.
@@ -99,3 +101,7 @@ Rolling allowance and negative available-balance screens are **planned**, not im
 5. Run frontend build, lint, and behavior tests. Perform Playwright MCP and UI/UX skill review with desktop, phone, landscape, larger-text, focus, contrast, and affected state checks. Repeat after fixes.
 
 Use the [mobile verification matrix](../learning/014-mobile-layout-and-accessibility.md#verification-and-its-limits). Browser screenshots are review evidence, not a replacement for semantic checks or physical iPhone follow-up. Store temporary browser artifacts in ignored `output/playwright/`.
+
+## Hosted authentication preview
+
+Development login offers **Try Keycloak preview**. Phase 1 uses native Keycloak templates under `infra/keycloak/themes/pocketledger`, with the same compiled application CSS/tokens and shared SVG. Credentials submit only to provider action URLs. Only seeded-user login and token-free logout confirmation are delivered here; hosted self-registration and its success confirmation remain Phases 2–3. The existing application registration and confirmation remain the default. Regenerate resources with `npm run build:keycloak-theme` before Aspire startup or after shared CSS changes; never maintain another palette. Review hosted labels, password visibility, pending/error states, and account layout alongside the app. The preview route is development-only, and `/design-system` continues to use the default bearer flow until Phase 5.

@@ -7,6 +7,10 @@ const DesignSystemRoute = import.meta.env.DEV
   ? lazy(() => import('./design-system/DesignSystemRoute'))
   : null
 
+const PreviewRoute = import.meta.env.DEV
+  ? lazy(() => import('./features/authentication/PreviewPage'))
+  : null
+
 export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [notice, setNotice] = useState('')
@@ -24,7 +28,7 @@ export default function App() {
   useEffect(() => {
     function onPopState() {
       const nextPath = window.location.pathname
-      if (!accessToken && nextPath !== '/register') navigate('/login', true)
+      if (!accessToken && nextPath !== '/register' && !(PreviewRoute && nextPath === '/preview')) navigate('/login', true)
       else setPath(nextPath)
     }
     window.addEventListener('popstate', onPopState)
@@ -32,9 +36,10 @@ export default function App() {
   }, [accessToken, navigate])
 
   useEffect(() => {
+    if (PreviewRoute && path === '/preview') { document.title = 'Keycloak preview · PocketLedger'; return }
     if (!accessToken && mode === 'login') window.history.replaceState(null, '', '/login')
     document.title = `${accessToken ? referenceOpen ? 'Design reference' : 'Today' : mode === 'register' ? 'Create your account' : 'Log in'} · PocketLedger`
-  }, [accessToken, mode, referenceOpen])
+  }, [accessToken, mode, referenceOpen, path])
 
   const endSession = useCallback((message = '') => {
     returnToReference.current = false
@@ -49,6 +54,8 @@ export default function App() {
     setAccessToken(token)
     setNotice('')
   }
+
+  if (PreviewRoute && path === '/preview') return <Suspense fallback={<p role="status">Loading preview…</p>}><PreviewRoute /></Suspense>
 
   if (!accessToken) return <AccountPage mode={mode} onAuthenticated={startSession} notice={notice} />
 

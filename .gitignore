@@ -16,3 +16,9 @@ dist/
 # Local browser verification artifacts
 .playwright-cli/
 output/playwright/
+
+# Playwright MCP snapshots can contain authentication material
+.playwright-mcp/
+
+# Python skill/tool caches
+__pycache__/

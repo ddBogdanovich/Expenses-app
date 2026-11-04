@@ -34,16 +34,19 @@ namespace PocketLedger.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(254)");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"PasswordHash\" IS NOT NULL");
 
-                    b.ToTable("UserAccounts", (string)null);
+                    b.ToTable("UserAccounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UserAccounts_CredentialKind", "(\"PasswordHash\" IS NOT NULL AND \"ExternalIssuer\" IS NULL AND \"ExternalSubject\" IS NULL) OR (\"PasswordHash\" IS NULL AND \"ExternalIssuer\" IS NOT NULL AND \"ExternalSubject\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("PocketLedger.Domain.Expenses.Expense", b =>
@@ -81,6 +84,59 @@ namespace PocketLedger.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Expenses_PositiveAmount", "\"AmountGrosz\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("PocketLedger.Infrastructure.Authentication.Preview.BrowserSession", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("ExpiresUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("ProtectedTicket")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresUtc");
+
+                    b.ToTable("BrowserSessions", (string)null);
+                });
+
+            modelBuilder.Entity("PocketLedger.Domain.Accounts.UserAccount", b =>
+                {
+                    b.OwnsOne("PocketLedger.Domain.Accounts.ExternalIdentity", "ExternalIdentity", b1 =>
+                        {
+                            b1.Property<Guid>("UserAccountId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Issuer")
+                                .IsRequired()
+                                .HasMaxLength(2048)
+                                .HasColumnType("character varying(2048)")
+                                .HasColumnName("ExternalIssuer");
+
+                            b1.Property<string>("Subject")
+                                .IsRequired()
+                                .HasMaxLength(255)
+                                .HasColumnType("character varying(255)")
+                                .HasColumnName("ExternalSubject");
+
+                            b1.HasKey("UserAccountId");
+
+                            b1.HasIndex("Issuer", "Subject")
+                                .IsUnique()
+                                .HasDatabaseName("IX_UserAccounts_ExternalIdentity");
+
+                            b1.ToTable("UserAccounts");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserAccountId");
+                        });
+
+                    b.Navigation("ExternalIdentity");
                 });
 
             modelBuilder.Entity("PocketLedger.Domain.Expenses.Expense", b =>
