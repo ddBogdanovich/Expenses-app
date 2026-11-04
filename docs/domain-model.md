@@ -64,9 +64,15 @@ Assume a plan starts on 2026-09-20 with a 50.00 PLN daily allowance and zero ope
 
 ## Account identity boundary
 
-Authentication is a supporting module separate from budgeting. A `UserAccount` aggregate has a stable ID, an `EmailAddress` value object, and an opaque password verifier. Email identity is trimmed and case-insensitive (stored uppercase); PostgreSQL enforces one account per normalized email, including concurrent registration attempts. Registration creates an account; login only retrieves and verifies one. Password hashing and JWT cryptography belong to Infrastructure, not the domain.
+Authentication is a supporting module separate from budgeting. The paragraphs below describe the default legacy flow; the development preview adds the independent external identity boundary described afterward. A `UserAccount` aggregate has a stable ID, an `EmailAddress` value object, and an opaque password verifier. Email identity is trimmed and case-insensitive (stored uppercase); PostgreSQL enforces one account per normalized email, including concurrent registration attempts. Registration creates an account; login only retrieves and verifies one. Password hashing and JWT cryptography belong to Infrastructure, not the domain.
 
 No plaintext password is stored. Registration's application-level `PasswordPolicy` accepts 12–128 characters; empty/null credentials and malformed emails are rejected. A login failure uses the same response for an unknown email and a wrong password. Access tokens expire after 30 minutes. Expense ownership is implemented: each expense references its account by ID, with no embedded account or expense collection on the account aggregate. Budget plans and their ownership are still to model.
+
+### External identity preview
+
+An external account has a stable local GUID, an email snapshot, and an `ExternalIdentity` containing the exact trusted issuer and opaque case-sensitive subject. It has no password verifier. PostgreSQL enforces unique issuer/subject independently from the legacy-only unique email index. A new external identity using a legacy email creates an independent account and cannot inherit its expenses. Repeated resolution, including after API restart, returns the same local GUID. The provider subject is never parsed as a local GUID; application-owned claims contain only the resolved local ID.
+
+Credential verification belongs to Keycloak, protocol/session mechanics and protected ticket storage belong to Infrastructure, and account provisioning is an application use case. Browser cookies do not alter expense or money rules. The default legacy flow remains available during preview; its removal, hosted registration policy/parity, and full failure handling remain planned. See ADR 0014.
 
 ## Expense aggregate boundary
 
@@ -74,4 +80,4 @@ No plaintext password is stored. Registration's application-level `PasswordPolic
 
 `TryCreate` and `TryUpdate` enforce these invariants without depending on a clock or framework. Handlers supply today's date through `IBusinessCalendar`; invalid updates change no fields. Backdating across month/year boundaries is allowed. Expense changes are persisted, but later allowance recalculation awaits the budget feature.
 
-API ownership derives exclusively from the authenticated subject. Reads and aggregate loading filter by owner; owner ID is included in write predicates and enforced by a database foreign key. Foreign and missing expense IDs both produce 404. Category and note currently use PostgreSQL text without product-specific length limits. Read projections return only purchase fields and ID; pagination and revision history are not implemented.
+API ownership derives exclusively from the authenticated local account ID: the legacy validated subject or the resolved external identity. Reads and aggregate loading filter by owner; owner ID is included in write predicates and enforced by a database foreign key. Foreign and missing expense IDs both produce 404. Category and note currently use PostgreSQL text without product-specific length limits. Read projections return only purchase fields and ID; pagination and revision history are not implemented.

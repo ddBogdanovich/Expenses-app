@@ -59,3 +59,24 @@ jobs:
       - run: npm ci
         working-directory: src/PocketLedger.Web
       - run: npm run check:frontend
+
+  authentication-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            src/PocketLedger.Web/package-lock.json
+            tests/PocketLedger.E2E/package-lock.json
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: npm --prefix src/PocketLedger.Web ci
+      - run: npm --prefix tests/PocketLedger.E2E ci
+      - run: npx --prefix tests/PocketLedger.E2E playwright install --with-deps chromium
+      - run: npm run build:keycloak-theme
+      - run: npm --prefix tests/PocketLedger.E2E test

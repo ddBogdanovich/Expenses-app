@@ -1,9 +1,9 @@
 namespace PocketLedger.Domain.Accounts;
 
-/// <summary>The account aggregate owns identity and a password verifier, never a plaintext password.</summary>
+/// <summary>The account owns a stable local identity and either an external identity or a legacy password verifier.</summary>
 public sealed class UserAccount
 {
-    private UserAccount(Guid id, EmailAddress email, string passwordHash)
+    private UserAccount(Guid id, EmailAddress email, string? passwordHash)
     {
         Id = id;
         Email = email;
@@ -14,7 +14,16 @@ public sealed class UserAccount
 
     public EmailAddress Email { get; private set; }
 
-    public string PasswordHash { get; private set; }
+    public string? PasswordHash { get; private set; }
+
+    public ExternalIdentity? ExternalIdentity { get; private set; }
+
+    public static UserAccount Provision(EmailAddress email, ExternalIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+        ArgumentNullException.ThrowIfNull(identity);
+        return new UserAccount(Guid.NewGuid(), email, null) { ExternalIdentity = identity };
+    }
 
     public static UserAccount Register(EmailAddress email, string passwordHash)
     {

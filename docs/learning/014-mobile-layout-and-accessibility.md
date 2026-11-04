@@ -41,3 +41,7 @@ Emulation is useful evidence about responsive layout, not proof of physical iPho
 These mobile requirements are incorporated into the [design guide](../design/README.md). Shared theme and measurement values now live in `src/PocketLedger.Web/src/styles/tokens.css`; account styles use `.account-layout`/`.account-card`, forms use `.ledger-form`/`.ledger-input`, and the daily total is rendered by `SpendingSummary`. The development-only `/design-system` page exercises these shared patterns. See [Learning note 015](015-frontend-design-system.md).
 
 Narrow forms use a container query: below 16rem of available form width, the password visibility button moves to its own row so it cannot cover the input text. The threshold scales with browser text size. Compact horizontal gutters and card padding retain named pixel values to preserve reading room at 200% text; font sizes and touch targets still scale.
+
+## Account layout at enlarged text
+
+Phase 1 Keycloak review exposed a narrow two-column form at 768×1024 with 200% root text. `PageShell` now supplies the named `page` inline-size container; account columns collapse below `47.5rem` of available content. Unlike a viewport-only pixel breakpoint, the rem-based container threshold responds to root text enlargement. The normal 1440px desktop composition stays intact, and the same compiled rule serves native provider pages. Repeat the matrix for both hosted and application account screens after changes.

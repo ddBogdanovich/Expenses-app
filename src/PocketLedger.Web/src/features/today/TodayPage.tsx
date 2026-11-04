@@ -11,9 +11,9 @@ const warsawDay = new Intl.DateTimeFormat('sv-SE', { timeZone: businessTimeZone 
 const minuteMs = 60_000
 const sessionEnded = 'Your session has ended. Log in again to see today’s spending.'
 
-type Props = { token: string; onEndSession: (message?: string) => void; onOpenDesignSystem?: () => void }
+type Props = { token: string; preview?: boolean; onEndSession: (message?: string) => void; onOpenDesignSystem?: () => void }
 
-export default function TodayPage({ token, onEndSession, onOpenDesignSystem }: Props) {
+export default function TodayPage({ token, preview = false, onEndSession, onOpenDesignSystem }: Props) {
   const [total, setTotal] = useState<DailyTotal | null>(null)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
@@ -31,7 +31,7 @@ export default function TodayPage({ token, onEndSession, onOpenDesignSystem }: P
       setTotal(previous => previous?.purchaseDate === requestedDay ? previous : null)
       try {
         const signal = AbortSignal.any([lifetime.signal, AbortSignal.timeout(requestTimeoutMs)])
-        const result = await getDailyTotal(token, signal)
+        const result = await getDailyTotal(token, signal, preview)
         if (lifetime.signal.aborted) return
         if (result === 'unauthorized') onEndSession(sessionEnded)
         else if (requestedDay === warsawDay.format(new Date())) {
@@ -62,7 +62,7 @@ export default function TodayPage({ token, onEndSession, onOpenDesignSystem }: P
       clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [token, attempt, onEndSession])
+  }, [token, preview, attempt, onEndSession])
 
   return (
     <PageShell headerAction={<nav className="header-actions" aria-label="Account">

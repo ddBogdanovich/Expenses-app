@@ -12,7 +12,7 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Keycloak milestone in progress
 
-The default password/JWT flow remains current. Phase 1 is introducing an explicitly selected development preview; it is not a production authentication change. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed.
+The default password/JWT flow remains current. Phase 1 adds an explicitly selected development preview; it is not a production authentication change. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed.
 
 ## Frontend
 
@@ -84,7 +84,7 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 
 - `Domain` owns business language and invariants.
 - `UseCases` owns feature handlers and ASP.NET Core controllers inside each vertical slice.
-- `Infrastructure` implements account and expense persistence with EF Core/Npgsql, owner-filtered expense query projections, Warsaw business dates, password hashing, and JWT signing and validation. Messaging remains planned.
+- `Infrastructure` implements EF Core/Npgsql persistence, owner-filtered expense projections, Warsaw dates, default legacy password/JWT behavior, and the isolated preview’s OIDC adapter, local identity resolution, antiforgery, and protected PostgreSQL ticket store. Messaging remains planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
 - `Web` is a browser frontend; Aspire starts its Vite development server and supplies the API endpoint for its `/api` development proxy.
@@ -105,14 +105,18 @@ Start with [Value objects and Money](docs/learning/001-value-objects-and-money.m
 
 ## Local orchestration
 
-Aspire is the development composition root from the first milestone. The AppHost starts the API, the `web` frontend, and the `postgres` server with an `expenses` database. The API references and waits for `expenses`; `web` waits for the API and receives its HTTP endpoint as `API_BASE_URL`. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
+Aspire is the development composition root from the first milestone. The AppHost starts `postgres`/`expenses`, `identity-postgres`/`keycloak-db`, Keycloak, the `keycloak-config` URL reconciliation step, the API, and `web`. Identity data has its own `pocketledger-identity-postgres-data` volume. The API waits for both databases, Keycloak readiness, and successful reconciliation. The browser origin stays on port 5173 and the provider on 8080; use the actual dashboard URLs because Aspire may enable provider HTTPS with its trusted development certificate. The API references and waits for `expenses`; `web` waits for the API and receives its HTTP endpoint as `API_BASE_URL`. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
 
 ```shell
+npm --prefix src/PocketLedger.Web ci
+npm run build:keycloak-theme
 cd PocketLedger.AppHost
-aspire start
+aspire start --non-interactive
 ```
 
 Open the dashboard URL printed by Aspire. The API, database, and frontend start automatically; their dashboard Start/Stop/Restart actions remain available. Open the `web` resource endpoint for the frontend. To run backend tests, click **Start** on **tests** and view its **Console logs**. Successful completion exits with code 0; use Start or Restart to run it again. The test resource builds the latest source into `.artifacts/tests` and uses disposable PostgreSQL containers, so it can run while the application is up. See [Learning note 010](docs/learning/010-aspire-dashboard-and-tests.md) and [ADR 0009](docs/decisions/0009-dashboard-test-runner.md). The API exposes development health endpoints at `/api/health` and `/api/alive`. Registration calls `/api/auth/register` through the Vite proxy. Browser telemetry remains planned.
+
+When the preview is enabled, HTTP request-start/finish logging is suppressed because callback queries contain authentication material; query redaction stays enabled for telemetry. Do not enable protocol/body/cookie logging. The following request-logging description applies when the preview is disabled.
 
 For API call logs, select **api** in **Console logs** or **Structured logs** and include the **Information** level. The API enables `Microsoft.AspNetCore.Hosting.Diagnostics` at Information for request-start and request-finish events, including method, URL, status, and elapsed time. Other ASP.NET Core categories remain at Warning. Structured entries include a trace ID for correlation; health-probe traces remain excluded, although their request logs are visible. Submitting registration generates an API call; refreshing `web` alone does not. See [request logging in Learning note 002](docs/learning/002-project-foundation-and-vertical-slices.md#request-logs-and-traces-are-different).
 
@@ -130,9 +134,30 @@ dotnet ef migrations script --idempotent --project src/PocketLedger.Infrastructu
 
 The EF tool is installed separately (`dotnet tool install --global dotnet-ef --version 10.0.11`). Supply database credentials through your deployment secret mechanism when applying SQL. Development migration convenience is not a production rollout strategy. See [Learning note 004](docs/learning/004-postgresql-and-ef-core.md) for persistence concepts and [Learning note 006](docs/learning/006-account-authentication.md) for authentication boundaries and limits.
 
+## Keycloak preview setup and limits
+
+After startup, open Keycloak from the dashboard and use its bootstrap administrator password from the secret parameter (never commit it). In the `pocketledger` realm, create a development user with an email/username, first and last name for the current default provider profile, no required actions, and a non-temporary password of 12–128 characters. Hosted self-registration/profile-policy completion remains Phase 2. Select **Try Keycloak preview** on the application login page. Passwords go to Keycloak; the callback opens `/preview` with an independent, persistent cookie session. The ordinary login/registration and `/design-system` continue using the default in-memory bearer flow.
+
+Preview sessions last 30 minutes idle and at most 8 hours. Browser close is not explicit logout. Logout clears local access and asks for provider confirmation without exposing an ID token to the browser. Existing unexpired local sessions can continue during provider outages; immediate provider administrator revocation and full recovery behavior remain later-phase work. The preview is enabled only in local Development/Testing. Production builds exclude its frontend import; production API configuration rejects an enabled preview.
+
+The realm import contains no users or real secrets; runtime placeholders supply the persisted client secret. Ordinary import skips an existing realm. `keycloak-config` authenticates the local administrator solely to reconcile exact callback/logout URLs, preserving client credentials and users. Its administrative bootstrap grant is not an application login path; Direct Access Grants remain disabled for `pocketledger-web`. Regenerate the theme after shared CSS changes with `npm run build:keycloak-theme`. Native templates/scripts remain under `infra/keycloak/themes/pocketledger`, generated CSS/SVG under ignored `.artifacts/keycloak-theme`.
+
+No reset or existing-account migration is performed. Reusing a legacy email creates an independent external account and never transfers expenses. Both application and identity volumes, old account IDs, expenses, and AppHost UserSecretsId are retained. A future reset requires an explicit, reviewed data/ownership procedure; do not delete volumes to repair configuration. The additive migration’s downgrade refuses to erase external identities.
+
+For repeatable acceptance with disposable services:
+
+```shell
+npm --prefix tests/PocketLedger.E2E ci
+npx --prefix tests/PocketLedger.E2E playwright install chromium
+npm run build:keycloak-theme
+npm --prefix tests/PocketLedger.E2E test
+```
+
+See the [E2E harness guide](tests/PocketLedger.E2E/README.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for evidence and remaining milestone boundaries. The browser suite runs separately from the dashboard’s backend `tests` resource and has its own CI job.
+
 ## Expense HTTP contract
 
-All backend endpoints use the `/api` prefix. Expense routes require a bearer token:
+All backend endpoints use the `/api` prefix. Default expense requests require a bearer token. Explicit preview requests use the independent session cookie and `X-PocketLedger-Auth: preview`; mutations also need a request token from `/api/auth/preview/antiforgery` in `X-CSRF-TOKEN`. Neither mode falls back to the other. Routes are shared:
 
 | Method | Route | Success |
 | --- | --- | --- |
@@ -149,7 +174,7 @@ Create and replace accept the same full payload:
 { "amountGrosz": 3500, "purchaseDate": "2026-01-01", "category": "Food", "note": "Lunch", "qualifiesForAllowance": true }
 ```
 
-Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in Europe/Warsaw. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the validated JWT subject; JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.
+Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in Europe/Warsaw. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the selected validated local account identity (legacy JWT subject or resolved external identity); JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.
 
 ## Project identity
 

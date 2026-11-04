@@ -21,7 +21,18 @@ Baseline: `d233787`, before product changes, on `codex/keycloak-phase-1-preview`
 
 Install with `npm --prefix tests/PocketLedger.E2E ci` and `npx --prefix tests/PocketLedger.E2E playwright install chromium`. `npm --prefix tests/PocketLedger.E2E test` owns disposable services and process cleanup. `test:external` requires an explicitly prepared test stack; do not run registration tests against developer data. Browser traces/video/screenshots are off in credential tests. Service logs and artifacts live under ignored `.artifacts/e2e` and `output/playwright`; they must never contain committed secrets.
 
-Runtime acceptance, compatibility, API restart persistence, scheme isolation, final screenshots, and frontend/backend checks remain pending. This note will record commands and results as each task progresses; a task does not become complete merely because its code exists.
+## Implementation and green evidence
+
+Implemented the additive external-account mapping, server-side ticket store, isolated cookie/OIDC schemes, CSRF filter, native hosted login/logout, development-only preview, and independent identity resources. Production output inspection found no preview/design-reference route imports. The existing default account flow remains current; hosted registration/profile policy and complete recovery remain later phases.
+
+- `dotnet test PocketLedger.slnx --artifacts-path .artifacts/tests`: 22 Domain, 3 UseCases, and 65 API tests passed with real disposable PostgreSQL. New cases cover opaque identity/restart, no legacy-email linking, session absolute expiry, and renewal after revocation. Existing persistence/duplicate-email/token/expense tests remain green.
+- `npm run check:frontend`: build/lint and 28 behavior tests passed. `npm test`: 11 tooling tests passed, including idempotent URL configuration, preservation of client credentials/unrelated settings, and failed-bootstrap no-write behavior.
+- `npm --prefix tests/PocketLedger.E2E test`: both retained journeys passed with real Keycloak 26.8.1 and disposable identity/application PostgreSQL. The preview journey creates a 42.37 PLN expense, restarts the API, verifies the same local ID/session/expense, rejects missing/tampered credentials and mixed-scheme crossover, rejects missing/invalid CSRF for otherwise-valid expenses with unchanged total, and completes provider/local logout plus revoked-cookie replay rejection. No browser password grant is used.
+- Review corrected two test weaknesses without weakening product assertions: wait for provider confirmation rather than taking an immediate visibility snapshot; test valid expense payloads rather than confusing model-validation 400 with CSRF rejection. The enabled real-service suite now proves scheme selection with both credential types present.
+- Aspire reported Keycloak/API/web healthy and `keycloak-config` success after ordinary restarts with the existing realm/database retained. Browser URLs must use the raw public endpoint URL rather than container-rebased host names. The Node resource integration supplies certificate trust; no TLS verification was disabled.
+- A frontend dependency-install collision exposed shared test/developer files. The harness now owns an independent frontend copy/dependencies and cleans up whole child process groups. The revised full suite passed alongside Aspire.
+
+The explicit dashboard test run and final browser inspection are recorded below; a blocked environment check is not green evidence.
 
 ## Exercise
 
@@ -29,3 +40,9 @@ Runtime acceptance, compatibility, API restart persistence, scheme isolation, fi
 2. Explain why a preview-selection header cannot replace a session cookie or an antiforgery token.
 3. What happens if an in-flight request renews a session after logout deletes it? How can an update-only renewal prevent resurrection?
 4. Why does persisting a session table fail to preserve login if the API loses its Data Protection keys?
+
+## Current environment interruption
+
+After earlier backend/E2E green runs, the explicitly started dashboard test resource encountered Docker `read-only file system` errors while creating disposable PostgreSQL containers. Provider/browser requests were also affected. This is infrastructure failure, not an expected red test or proof of an authentication defect. Verification services were stopped before attempting Docker Desktop recovery. Dashboard exit-code evidence and final affected browser checks remain outstanding until recovery/rerun; do not mark Phase 1 complete based only on prior passes.
+
+The bounded `docker desktop restart --timeout 45` recovery attempt failed because Docker processes did not stop before its deadline. No force reset, image prune, or volume deletion was attempted. The source review has no remaining must-fix findings, but the PR stays draft: tasks 1–3 are implemented; tasks 4–5 retain outstanding browser/dashboard verification. Final solution formatting passed. The 20-case hosted login viewport/text matrix had no horizontal overflow; visual inspection confirmed the 200% tablet reflow fix. Full credential/pending/logout MCP checks could not finish after the runtime interruption, so final UI acceptance is not claimed.
