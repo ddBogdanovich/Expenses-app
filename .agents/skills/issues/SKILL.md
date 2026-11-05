@@ -33,9 +33,15 @@ If no path was given, look for plan files in `docs/`. If there is exactly one, u
     - what to do (the task text, plus any details from the plan);
     - **Phase goal**: the goal of the phase;
     - **Depends on**: the value of `Depends on` from the plan, if any;
-    - **Links**: path to the plan file and to the PRD.
+    - **Links**: path to the plan file and to the PRD. If an implementation PR already exists and its scope covers this task, include a direct Markdown link: `- Implementation PR: [#<number>](<full PR URL>)`. Do not invent a PR URL or add an empty placeholder when implementation has not started.
 - **Labels**: take them from the phase's `Layers` (fe / be / db / infra), but only if a label with that name already exists in the repository. Never create labels and never invent them. If there are no matching labels, create the issue without labels.
 - **Milestone**: the milestone of the phase the task belongs to.
+
+## Implementation handoff
+
+At the start of implementation, create any new task branch from freshly fetched remote `main` (normally `origin/main`), not the current feature branch or a stale local `main`, unless the user explicitly chooses another base. Fetch must succeed before branch creation; verify the new branch starts at that fetched commit. Preserve unrelated changes, using a separate worktree when necessary. Resume existing task branches without resetting them. The [implementation/review skill](../requesting-code-review/SKILL.md#starting-a-new-implementation-branch) contains the concrete GitHub Flow commands.
+
+When these issues are later implemented, add the implementation PR's direct Markdown link to each covered issue's **Links** section before marking the task Done. A PR-body mention or GitHub timeline cross-reference alone does not satisfy this requirement. Preserve other body content and existing PR links; add each relevant PR once when a task spans several PRs. Verify the saved issue body contains the correct URL. Link the covered issues from the PR description as well; use automatic closing keywords only when closing them on merge is intended. This is a handoff requirement for the implementation workflow, not authorization for this generator to implement tasks or edit existing issues during backlog creation.
 
 ## Rules
 

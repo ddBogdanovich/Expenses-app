@@ -1,6 +1,6 @@
 ---
 name: requesting-code-review
-description: Use when completing tasks, implementing major features, or before merging to verify work meets requirements
+description: Use when starting GitHub Flow implementation, completing tasks, implementing major features, or before merging to verify work meets requirements
 ---
 
 # Requesting Code Review
@@ -8,6 +8,16 @@ description: Use when completing tasks, implementing major features, or before m
 Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history.
 
 **Core principle:** Review early, review often.
+
+## Starting a new implementation branch
+
+For GitHub Flow work, create each new implementation branch from the latest remote `main`, unless the user explicitly specifies another base:
+
+- Inspect the working tree and preserve existing changes. Use a separate worktree when needed; do not reset, discard, or automatically stash unrelated work.
+- Fetch the repository's upstream remote immediately before creating the branch. For this repository, run `git fetch origin` and require it to succeed; if fetching fails, report the blocker instead of treating cached refs as current.
+- Create the branch explicitly from the freshly fetched reference: `git switch --no-track -c codex/<task-name> origin/main`. Do not branch from the current feature branch or an unverified local `main`.
+- Before implementation commits, verify `git rev-parse HEAD` equals `git rev-parse origin/main`. Record the base commit in the implementation/review context.
+- This applies when creating a new branch. Resume an existing task branch without recreating or resetting it; updating its base later is a separate operation.
 
 ## When to Request Review
 
@@ -44,6 +54,12 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 - Fix Important issues before proceeding
 - Note Minor issues for later
 - Push back if reviewer is wrong (with reasoning)
+
+## GitHub issue traceability at completion
+
+For implementation tracked by GitHub issues, include direct issue-to-PR links in the completion checks. Once the implementation PR exists, add `- Implementation PR: [#<number>](<full PR URL>)` under **Links** in every issue the PR implements; create that section if absent. Verify the PR covers the issue and reread the saved body before moving its board card to Done. Preserve unrelated issue content and existing links, and avoid duplicate entries. A PR-body reference or timeline cross-reference alone is insufficient. If several PRs implement a task, retain each relevant link and wait for the task's full acceptance criteria before marking it Done.
+
+The PR description should also reference the covered issues. Use closing keywords only when automatic closure on merge is intended; adding direct links does not itself authorize closing issues, merging, or publishing a PR.
 
 ## Example
 
