@@ -1,6 +1,6 @@
 namespace PocketLedger.Domain.Accounts;
 
-/// <summary>Stores account aggregates; insertion enforces unique email atomically.</summary>
+/// <summary>Stores account aggregates; insertion atomically enforces legacy email and external identity uniqueness.</summary>
 public interface IUserAccountRepository
 {
     Task<UserAccount?> FindByEmailAsync(EmailAddress email, CancellationToken cancellationToken);

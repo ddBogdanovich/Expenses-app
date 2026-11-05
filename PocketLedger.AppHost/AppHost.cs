@@ -27,6 +27,7 @@ var keycloak = builder.AddKeycloak("keycloak", KeycloakBrowserPort, adminPasswor
     .WithEnvironment("KC_DB_PASSWORD", identityDatabase.Resource.Parent.PasswordParameter)
     .WithEnvironment("POCKETLEDGER_CLIENT_SECRET", clientSecret)
     .WithRealmImport("../infra/keycloak/pocketledger-realm.json")
+    .WithBindMount("../.artifacts/keycloak-provider/pocketledger-registration.jar", "/opt/keycloak/providers/pocketledger-registration.jar", isReadOnly: true)
     .WithBindMount("../.artifacts/keycloak-theme/pocketledger", "/opt/keycloak/themes/pocketledger", isReadOnly: true)
     .WaitFor(identityDatabase);
 

@@ -1,0 +1,30 @@
+{
+  "realm": "pocketledger",
+  "enabled": true,
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginTheme": "pocketledger",
+  "passwordPolicy": "length(12) and maxLength(128)",
+  "clients": [{
+    "clientId": "pocketledger-web",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "secret": "${POCKETLEDGER_CLIENT_SECRET}",
+    "standardFlowEnabled": true,
+    "implicitFlowEnabled": false,
+    "directAccessGrantsEnabled": false,
+    "serviceAccountsEnabled": false,
+    "redirectUris": ["${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/callback"],
+    "attributes": {
+      "pkce.code.challenge.method": "S256",
+      "post.logout.redirect.uris": "${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/signed-out"
+    },
+    "defaultClientScopes": ["profile", "email"]
+  }]
+}

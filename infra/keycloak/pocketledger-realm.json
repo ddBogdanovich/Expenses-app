@@ -1,7 +1,7 @@
 {
   "realm": "pocketledger",
   "enabled": true,
-  "registrationAllowed": false,
+  "registrationAllowed": true,
   "registrationEmailAsUsername": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -10,21 +10,80 @@
   "verifyEmail": false,
   "loginTheme": "pocketledger",
   "passwordPolicy": "length(12) and maxLength(128)",
-  "clients": [{
-    "clientId": "pocketledger-web",
-    "enabled": true,
-    "protocol": "openid-connect",
-    "publicClient": false,
-    "secret": "${POCKETLEDGER_CLIENT_SECRET}",
-    "standardFlowEnabled": true,
-    "implicitFlowEnabled": false,
-    "directAccessGrantsEnabled": false,
-    "serviceAccountsEnabled": false,
-    "redirectUris": ["${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/callback"],
-    "attributes": {
-      "pkce.code.challenge.method": "S256",
-      "post.logout.redirect.uris": "${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/signed-out"
+  "clients": [
+    {
+      "clientId": "pocketledger-web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${POCKETLEDGER_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/callback"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/signed-out"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email"
+      ]
+    }
+  ],
+  "editUsernameAllowed": false,
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":1,\"max\":255}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]}},{\"name\":\"email\",\"displayName\":\"${email}\",\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"validations\":{\"email\":{},\"length\":{\"max\":255}}}],\"unmanagedAttributePolicy\":null}"
+          ]
+        }
+      }
+    ]
+  },
+  "registrationFlow": "pocketledger-registration-v2",
+  "authenticationFlows": [
+    {
+      "alias": "pocketledger-registration-v2",
+      "description": "Email/password registration policy v2",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "flowAlias": "pocketledger-registration-form-v2",
+          "authenticatorFlow": true,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticator": "registration-page-form"
+        }
+      ]
     },
-    "defaultClientScopes": ["profile", "email"]
-  }]
+    {
+      "alias": "pocketledger-registration-form-v2",
+      "providerId": "form-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "pocketledger-registration-policy",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10
+        },
+        {
+          "authenticator": "registration-password-action",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20
+        }
+      ]
+    }
+  ]
 }

@@ -32,7 +32,7 @@ Implemented the additive external-account mapping, server-side ticket store, iso
 - Aspire reported Keycloak/API/web healthy and `keycloak-config` success after ordinary restarts with the existing realm/database retained. Browser URLs must use the raw public endpoint URL rather than container-rebased host names. The Node resource integration supplies certificate trust; no TLS verification was disabled.
 - A frontend dependency-install collision exposed shared test/developer files. The harness now owns an independent frontend copy/dependencies and cleans up whole child process groups. The revised full suite passed alongside Aspire.
 
-The explicit dashboard test run and final browser inspection passed after the environment recovery recorded below. Phase 1 is complete; later-phase registration and failure-hardening requirements remain planned.
+The explicit dashboard test run and final browser inspection passed after the environment recovery recorded below. Phase 1 is complete; at that phase boundary, registration and failure hardening remained planned. The Phase 2 continuation below records the registration policy now implemented.
 
 ## Exercise
 
@@ -59,3 +59,7 @@ The owner restored Docker. Verification resumed against implementation revision 
 - Completed the project-local UI/UX skill review for accessible authentication, text reflow, form feedback, touch targets, labels, focus, and the accepted light theme. No unresolved Phase 1 UI findings remain. Sanitized screenshots stay ignored under `output/playwright/keycloak-resumed-*.png`; protocol query strings, credentials, cookies, and inspection files are not published. Physical iPhone Safari, software-keyboard, and VoiceOver testing remain the explicit device limits described in note 014; desktop emulation does not prove those behaviors.
 
 Source review found no remaining must-fix findings. Required frontend/tooling/format checks and committed-revision CI were already green and no source changed during this recovery. Both the pull-request and duplicate push workflows passed all four jobs on `6385547`. The follow-up commit records completion; verification-only Aspire and inspection services are stopped afterward, preserving application/identity volumes and unrelated local changes.
+
+## Phase 2 continuation
+
+Phase 1 behavior above remains historical evidence. [Learning note 017](017-registration-policy-and-concurrent-identity.md) records implemented registration policy, the provider build prerequisite, non-destructive retained-realm upgrades, and concurrency verification. Run `npm run build:keycloak-provider` alongside the existing theme build before starting current Aspire or E2E resources. Hosted registration parity and confirmation are still Phase 3; preview design-reference access and cutover remain later phases.

@@ -6,6 +6,7 @@ Run from the repository root with Docker, the selected .NET SDK, and Node/npm av
 npm --prefix src/PocketLedger.Web ci
 npm --prefix tests/PocketLedger.E2E ci
 npx --prefix tests/PocketLedger.E2E playwright install chromium
+npm run build:keycloak-provider
 npm run build:keycloak-theme
 npm --prefix tests/PocketLedger.E2E test
 ```
@@ -17,3 +18,11 @@ A token-protected loopback-only control endpoint belongs to the harness, not the
 For Playwright MCP inspection, use `E2E_INSPECT=1 npm --prefix tests/PocketLedger.E2E test`. After the tests the harness retains its disposable stack until SIGINT; ignored `.artifacts/e2e/inspection.json` contains transient test credentials, URL, and owner PID. Never publish that file. SIGINT closes owned processes/containers and deletes it. This mode is for local review; CI uses normal automatic cleanup.
 
 `test:external` is an expert-only browser runner against an already prepared disposable stack with `E2E_*` settings and the restart control endpoint. Do not point it at the developer app. No password grant is used for application login: the suite fills real Keycloak hosted pages.
+
+## Phase 2 registration and retained-realm upgrades
+
+The default run imports current versioned policy. Repeat with `E2E_REALM_BASELINE=phase1 npm --prefix tests/PocketLedger.E2E test` to import the retained Phase 1 fixture (from `78fec1b`) and upgrade it through the same `configure-keycloak.mjs` used by Aspire. CI runs both modes. Each runs reconciliation twice, then proves the pre-existing seeded user's password and subject still work. No developer services are involved.
+
+The registration suite retains a real OIDC transaction (state/nonce/PKCE) and opens Keycloak's supported `/protocol/openid-connect/registrations` endpoint. It submits email/password only, leaving the inherited confirmation control empty. It covers lengths 11/12/128/129, trimmed/case variants, duplicate and concurrent registration, winning/rejected credentials, and owner-filtered CRUD/totals for two registered users. The harness-only `/identity-count` control uses authenticated administration solely to count exact normalized-email matches; it never authenticates the application user. Native concurrent denial presentation remains Phase 3 work; backend tests assert identity and credential integrity.
+
+Both control actions require the per-run token on a loopback-only server. Do not expose that server, inspection credentials, or artifacts. The provider JAR is built with Docker against the pinned Keycloak version and mounted read-only into the disposable container. See learning note 017 for test-first evidence and policy design.

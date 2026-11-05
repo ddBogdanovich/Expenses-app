@@ -52,16 +52,18 @@ Criteria C1–C19 below refer to the PRD's Definition of done checkboxes in thei
 **Test-first gate:** Before realm, provisioning, or schema changes, add and run real-service tests for email-only registration, password boundaries, normalized/concurrent duplicate email, repeated/concurrent local provisioning, two-owner isolation, and opaque subjects. Use supported browser registration/login for user journeys and HTTP integration tests for backend/concurrency cases. Record which assertions expose missing behavior and which already pass under Phase 1; rerun Phase 1 E2E regressions before and after the changes.
 **Tasks:**
 
-- [ ] Complete versioned realm/client configuration for email-only self-registration: trimmed, case-insensitive email identity; 12–128-character passwords; no required username/name/confirmation field; and no email verification, recovery, MFA, social login, or Direct Access Grants. Verify capabilities against the selected Keycloak version and isolate any necessary provider-side policy extension; do not recreate password handling in PocketLedger.
-- [ ] Complete aggregate/repository and EF provisioning behavior so a newly authenticated issuer/subject resolves once to a local account, including repeated/concurrent first requests and database uniqueness conflicts. Avoid making mutable provider email the expense ownership key.
-- [ ] Rerun the test-first real-Keycloak policy tests for password lengths 11/12/128/129, email whitespace/case variants, concurrent duplicate registration, and unchanged credentials after a rejected duplicate to green. Exercise supported browser authorization/registration endpoints with an isolated test client; do not use password grant as the test login shortcut.
-- [ ] Rerun the test-first `PocketLedger.Api.Tests/ExpenseTests.cs` and authentication cases for two owners, foreign-ID NotFound, concurrent provisioning, and non-GUID provider subjects, plus earlier E2E regressions. Document reproducible realm setup, identity policy, red/green evidence, and the identity-boundary lesson; run backend checks and Aspire validation for changed configuration.
+- [x] Complete versioned realm/client configuration for email-only self-registration: trimmed, case-insensitive email identity; 12–128-character passwords; no required username/name/confirmation field; and no email verification, recovery, MFA, social login, or Direct Access Grants. Verify capabilities against the selected Keycloak version and isolate any necessary provider-side policy extension; do not recreate password handling in PocketLedger.
+- [x] Complete aggregate/repository and EF provisioning behavior so a newly authenticated issuer/subject resolves once to a local account, including repeated/concurrent first requests and database uniqueness conflicts. Avoid making mutable provider email the expense ownership key.
+- [x] Rerun the test-first real-Keycloak policy tests for password lengths 11/12/128/129, email whitespace/case variants, concurrent duplicate registration, and unchanged credentials after a rejected duplicate to green. Exercise supported browser authorization/registration endpoints with an isolated test client; do not use password grant as the test login shortcut.
+- [x] Rerun the test-first `PocketLedger.Api.Tests/ExpenseTests.cs` and authentication cases for two owners, foreign-ID NotFound, concurrent provisioning, and non-GUID provider subjects, plus earlier E2E regressions. Document reproducible realm setup, identity policy, red/green evidence, and the identity-boundary lesson; run backend checks and Aspire validation for changed configuration.
 
 **Definition of done:**
 
-- [ ] Tests against disposable real services demonstrate the policy boundaries, one identity per normalized email, and one local account per issuer/subject under concurrent provisioning.
-- [ ] Owner-filtered CRUD and daily totals remain isolated for two users; issuer/subject identity never depends on parsing `sub` as a GUID or matching email to an old account.
-- [ ] Realm setup is reproducible without manual reconstruction, and default/preview behavior remains usable.
+- [x] Tests against disposable real services demonstrate the policy boundaries, one identity per normalized email, and one local account per issuer/subject under concurrent provisioning.
+- [x] Owner-filtered CRUD and daily totals remain isolated for two users; issuer/subject identity never depends on parsing `sub` as a GUID or matching email to an old account.
+- [x] Realm setup is reproducible without manual reconstruction, and default/preview behavior remains usable.
+
+**Evidence:** [Learning note 017](learning/017-registration-policy-and-concurrent-identity.md) and [ADR 0015](decisions/0015-keycloak-registration-policy.md). Hosted form/confirmation presentation remains Phase 3.
 
 ### Phase 3: Preserve the full hosted login and registration experience
 
