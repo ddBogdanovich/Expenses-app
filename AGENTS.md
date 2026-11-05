@@ -48,7 +48,7 @@ Use explicit mapping functions. Do not introduce MediatR or AutoMapper without a
 
 Use `Result` for expected business outcomes such as validation, missing records, and conflicts. Keep exceptions for programming errors, broken internal invariants, and infrastructure failures. Preserve checked monetary arithmetic to prevent silent overflow.
 
-The Keycloak Phase 1 preview is implemented; its design is recorded in ADR 0014. The default JWT flow remains current until the planned cutover. Preview implementation must use isolated authentication schemes, exact issuer/subject mapping to local IDs, server-side tickets, antiforgery on cookie mutations, and non-destructive additive migrations. Track delivered behavior and outstanding verification in learning note 016.
+The Keycloak Phase 1 preview is implemented and verified; its design is recorded in ADR 0014. The default JWT flow remains current until the planned cutover. Preview implementation must use isolated authentication schemes, exact issuer/subject mapping to local IDs, server-side tickets, antiforgery on cookie mutations, and non-destructive additive migrations. Track delivered behavior, verification evidence, and later-phase limitations in learning note 016.
 
 ## Documentation after architecture changes
 
