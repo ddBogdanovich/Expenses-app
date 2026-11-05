@@ -2,6 +2,13 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import test from 'node:test'
+import { readFile } from 'node:fs/promises'
+
+const template = JSON.parse(await readFile(new URL('../infra/keycloak/pocketledger-realm.json', import.meta.url)))
+const profile = JSON.parse(template.components['org.keycloak.userprofile.UserProfileProvider'][0].config['kc.user.profile.config'][0])
+const flows = template.authenticationFlows
+const executions = [{ id: 'form', displayName: flows[1].alias, requirement: 'REQUIRED' },
+  ...flows[1].authenticationExecutions.map((entry, index) => ({ id: `action-${index}`, providerId: entry.authenticator, requirement: 'REQUIRED' }))]
 
 async function fixture(t, initialClient, authenticated = true) {
   const writes = []
@@ -11,7 +18,13 @@ async function fixture(t, initialClient, authenticated = true) {
     response.setHeader('Content-Type', 'application/json')
     if (request.url.includes('/token')) {
       response.writeHead(authenticated ? 200 : 401).end(JSON.stringify({ access_token: 'fixture-token' }))
-    } else if (request.method === 'GET') response.end(JSON.stringify([initialClient]))
+    } else if (request.method === 'GET') {
+      const result = request.url.endsWith('/authentication/flows') ? flows.filter(flow => flow.topLevel)
+        : request.url.endsWith('/executions') ? executions
+        : request.url.endsWith('/users/profile') ? profile
+        : request.url.endsWith('/realms/pocketledger') ? template : [initialClient]
+      response.end(JSON.stringify(result))
+    }
     else {
       let body = ''
       for await (const chunk of request) body += chunk
@@ -30,16 +43,17 @@ async function fixture(t, initialClient, authenticated = true) {
 }
 
 const current = {
+  standardFlowEnabled: true, implicitFlowEnabled: false, directAccessGrantsEnabled: false, serviceAccountsEnabled: false,
   id: 'ledger-client', secret: 'existing-secret', otherSetting: 'keep',
   redirectUris: ['http://localhost:5173/api/auth/preview/callback'],
-  attributes: { 'post.logout.redirect.uris': 'http://localhost:5173/api/auth/preview/signed-out', otherAttribute: 'keep' },
+  attributes: { 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': 'http://localhost:5173/api/auth/preview/signed-out', otherAttribute: 'keep' },
 }
 
 test('identity URL reconciliation is idempotent and makes no user or credential writes', async t => {
   const result = await fixture(t, current)
   assert.equal(result.code, 0)
   assert.deepEqual(result.writes, [])
-  assert.ok(result.requests.every(path => !path.includes('/users')))
+  assert.ok(result.requests.every(path => !/\/users(?:\?|$|\/(?!profile))/.test(path)))
 })
 
 test('identity URL updates preserve client credentials and unrelated configuration', async t => {
@@ -53,4 +67,11 @@ test('failed bootstrap authentication cannot mutate identity configuration', asy
   assert.equal(result.code, 1)
   assert.equal(result.requests.length, 1)
   assert.deepEqual(result.writes, [])
+})
+
+// Policy drift must be corrected without replacing credentials or unrelated client attributes.
+test('preview cannot retain a password grant or lose PKCE through configuration drift', async t => {
+  const result = await fixture(t, { ...current, directAccessGrantsEnabled: true, attributes: { ...current.attributes, 'pkce.code.challenge.method': 'plain' } })
+  assert.equal(result.code, 0)
+  assert.deepEqual(result.writes, [current])
 })

@@ -50,3 +50,7 @@ Do not delete `pocketledger-postgres-data`, the identity volume, or unrelated us
 The retained Playwright suite starts a network-reachable API and Vite with disposable PostgreSQL/Keycloak. Write/run its missing-preview assertion before product changes, preserve the already-green default journey, and rerun real login → local account → expense → reload → logout after implementation. UI changes additionally require Playwright MCP and the local UI/UX skill at the complete mobile/text matrix. See [learning note 016](../learning/016-keycloak-preview.md) for evidence and limitations.
 
 PostgreSQL session reads and a small ticket-store implementation are additional costs; they provide explicit revocation and restart persistence without Redis. Custom token/protocol code, a separate BFF service, permanent dual authentication, automatic account linking, provider registration parity, and production deployment are excluded from this phase.
+
+## Phase 2 supplement
+
+[ADR 0015](0015-keycloak-registration-policy.md) adds the provider registration policy and non-destructive flow/profile/policy reconciliation. The URL-only configuration scope above describes the original Phase 1 implementation; Phase 2 expands that owned scope while preserving users, credentials, client secrets, and built-in flows.

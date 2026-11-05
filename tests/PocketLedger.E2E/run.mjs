@@ -68,7 +68,9 @@ try {
   const clientSecret = randomBytes(32).toString('hex')
   const userPassword = randomBytes(24).toString('hex')
   const subject = '6f48ebfc-cdaa-43df-9f6f-b548876466a3'
-  const realm = JSON.parse(await readFile(`${root}infra/keycloak/pocketledger-realm.json`, 'utf8'))
+  const realmTemplate = process.env.E2E_REALM_BASELINE === 'phase1'
+    ? 'tests/PocketLedger.E2E/fixtures/phase1-realm.json' : 'infra/keycloak/pocketledger-realm.json'
+  const realm = JSON.parse(await readFile(`${root}${realmTemplate}`, 'utf8'))
   realm.users = [{ id: subject, username: 'preview@example.com', email: 'preview@example.com', enabled: true,
     firstName: 'Preview', lastName: 'Owner', credentials: [{ type: 'password', value: userPassword, temporary: false }] }]
   const keycloak = await new GenericContainer('quay.io/keycloak/keycloak:26.8.1')
@@ -77,11 +79,22 @@ try {
       KC_DB: 'postgres', KC_DB_URL: 'jdbc:postgresql://identity:5432/keycloak', KC_DB_USERNAME: 'postgres', KC_DB_PASSWORD: password,
       KC_HEALTH_ENABLED: 'true', POCKETLEDGER_CLIENT_SECRET: clientSecret, POCKETLEDGER_WEB_ORIGIN: baseURL })
     .withCopyContentToContainer([{ content: JSON.stringify(realm), target: '/opt/keycloak/data/import/pocketledger-realm.json' }])
-    .withBindMounts([{ source: `${root}.artifacts/keycloak-theme/pocketledger`, target: '/opt/keycloak/themes/pocketledger', mode: 'ro' }])
+    .withBindMounts([
+      { source: `${root}.artifacts/keycloak-theme/pocketledger`, target: '/opt/keycloak/themes/pocketledger', mode: 'ro' },
+      { source: `${root}.artifacts/keycloak-provider/pocketledger-registration.jar`, target: '/opt/keycloak/providers/pocketledger-registration.jar', mode: 'ro' },
+    ])
     .withCommand(['start-dev', '--import-realm', '--spi-theme--cache-themes=false', '--spi-theme--cache-templates=false', '--spi-theme--static-max-age=-1']).withExposedPorts(8080, 9000)
     .withWaitStrategy(Wait.forHttp('/health/ready', 9000).forStatusCode(200)).withStartupTimeout(120_000).start()
   containers.push(keycloak)
-  const authority = `http://localhost:${keycloak.getMappedPort(8080)}/realms/pocketledger`
+  const keycloakURL = `http://localhost:${keycloak.getMappedPort(8080)}`
+  // Run the same non-destructive reconciliation as Aspire, twice to verify idempotency.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const configuration = await start('node', ['scripts/configure-keycloak.mjs'], {
+      KEYCLOAK_URL: keycloakURL, KEYCLOAK_ADMIN_PASSWORD: password, POCKETLEDGER_WEB_ORIGIN: baseURL,
+    }, `identity-config-${attempt}`)
+    if (await new Promise(resolve => configuration.once('exit', resolve)) !== 0) throw new Error('Identity policy reconciliation failed; inspect ignored configuration logs.')
+  }
+  const authority = `${keycloakURL}/realms/pocketledger`
   const apiArgs = ['run', '--project', 'src/PocketLedger.Api', '--no-launch-profile', '--artifacts-path', '.artifacts/e2e/build']
   const apiEnvironment = {
     ASPNETCORE_ENVIRONMENT: 'Development', ASPNETCORE_URLS: `http://localhost:${apiPort}`,
@@ -99,10 +112,27 @@ try {
   await ready(baseURL, web)
   const controlToken = randomBytes(32).toString('hex')
   controlServer = createHttpServer(async (request, response) => {
-    if (request.method !== 'POST' || request.url !== '/restart-api' || request.headers['x-e2e-control'] !== controlToken) {
+    if (request.method !== 'POST' || !['/restart-api', '/identity-count'].includes(request.url) || request.headers['x-e2e-control'] !== controlToken) {
       response.writeHead(404).end(); return
     }
     try {
+      if (request.url === '/identity-count') {
+        let body = ''
+        for await (const chunk of request) body += chunk
+        const { email } = JSON.parse(body)
+        const authentication = await fetch(`${keycloakURL}/realms/master/protocol/openid-connect/token`, {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ grant_type: 'password', client_id: 'admin-cli', username: 'admin', password }),
+        })
+        if (!authentication.ok) throw new Error('Test administration failed.')
+        const { access_token } = await authentication.json()
+        const users = await fetch(`${keycloakURL}/admin/realms/pocketledger/users?email=${encodeURIComponent(email.trim().toLowerCase())}&exact=true`, {
+          headers: { Authorization: `Bearer ${access_token}` },
+        })
+        if (!users.ok) throw new Error('Test identity lookup failed.')
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ count: (await users.json()).length }))
+        return
+      }
       const exited = new Promise(resolve => api.once('exit', resolve))
       stop(api)
       await exited

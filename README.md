@@ -12,7 +12,7 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Keycloak milestone in progress
 
-The default password/JWT flow remains current. Phase 1 adds an explicitly selected development preview; it is not a production authentication change. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed.
+The default password/JWT flow remains current. Phases 1–2 add an explicitly selected development preview with provider-enforced registration policy and tested concurrent identity provisioning; it is not a production authentication change. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed. See [ADR 0015](docs/decisions/0015-keycloak-registration-policy.md) and [learning note 017](docs/learning/017-registration-policy-and-concurrent-identity.md) for registration policy, retained-realm upgrades, and concurrency evidence.
 
 ## Frontend
 
@@ -105,10 +105,11 @@ Start with [Value objects and Money](docs/learning/001-value-objects-and-money.m
 
 ## Local orchestration
 
-Aspire is the development composition root from the first milestone. The AppHost starts `postgres`/`expenses`, `identity-postgres`/`keycloak-db`, Keycloak, the `keycloak-config` URL reconciliation step, the API, and `web`. Identity data has its own `pocketledger-identity-postgres-data` volume. The API waits for both databases, Keycloak readiness, and successful reconciliation. The browser origin stays on port 5173 and the provider on 8080; use the actual dashboard URLs because Aspire may enable provider HTTPS with its trusted development certificate. The API references and waits for `expenses`; `web` waits for the API and receives its HTTP endpoint as `API_BASE_URL`. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
+Aspire is the development composition root from the first milestone. The AppHost starts `postgres`/`expenses`, `identity-postgres`/`keycloak-db`, Keycloak, the `keycloak-config` registration-policy and URL reconciliation step, the API, and `web`. Identity data has its own `pocketledger-identity-postgres-data` volume. The API waits for both databases, Keycloak readiness, and successful reconciliation. The browser origin stays on port 5173 and the provider on 8080; use the actual dashboard URLs because Aspire may enable provider HTTPS with its trusted development certificate. The API references and waits for `expenses`; `web` waits for the API and receives its HTTP endpoint as `API_BASE_URL`. A generated secret signing-key parameter is passed to the API and persisted in AppHost user secrets. Aspire installs frontend dependencies with `npm ci` and checks readiness. The API exports OpenTelemetry; process logs and resource state are visible in the dashboard. A local `tests` resource appears with an explicit Start control and runs the backend suite on demand.
 
 ```shell
 npm --prefix src/PocketLedger.Web ci
+npm run build:keycloak-provider
 npm run build:keycloak-theme
 cd PocketLedger.AppHost
 aspire start --non-interactive
@@ -136,11 +137,11 @@ The EF tool is installed separately (`dotnet tool install --global dotnet-ef --v
 
 ## Keycloak preview setup and limits
 
-After startup, open Keycloak from the dashboard and use its bootstrap administrator password from the secret parameter (never commit it). In the `pocketledger` realm, create a development user with an email/username, first and last name for the current default provider profile, no required actions, and a non-temporary password of 12–128 characters. Hosted self-registration/profile-policy completion remains Phase 2. Select **Try Keycloak preview** on the application login page. Passwords go to Keycloak; the callback opens `/preview` with an independent, persistent cookie session. The ordinary login/registration and `/design-system` continue using the default in-memory bearer flow.
+After startup, open Keycloak from the dashboard and use its bootstrap administrator password from the secret parameter (never commit it). The `pocketledger` realm accepts self-registration through the supported OIDC registration endpoint using email and a 12–128-character password. Email is trimmed and normalized case-insensitively by a narrow provider extension; Keycloak owns password validation/hashing. Usernames and names are not required, and the server accepts one password entry. Hosted form/confirmation parity and the application registration link remain Phase 3. For manual preview login you can still create a user in the admin console with email/username, no required actions, and a non-temporary password of 12–128 characters. Select **Try Keycloak preview** on the application login page. Passwords go to Keycloak; the callback opens `/preview` with an independent, persistent cookie session. The ordinary login/registration and `/design-system` continue using the default in-memory bearer flow.
 
 Preview sessions last 30 minutes idle and at most 8 hours. Browser close is not explicit logout. Logout clears local access and asks for provider confirmation without exposing an ID token to the browser. Existing unexpired local sessions can continue during provider outages; immediate provider administrator revocation and full recovery behavior remain later-phase work. The preview is enabled only in local Development/Testing. Production builds exclude its frontend import; production API configuration rejects an enabled preview.
 
-The realm import contains no users or real secrets; runtime placeholders supply the persisted client secret. Ordinary import skips an existing realm. `keycloak-config` authenticates the local administrator solely to reconcile exact callback/logout URLs, preserving client credentials and users. Its administrative bootstrap grant is not an application login path; Direct Access Grants remain disabled for `pocketledger-web`. Regenerate the theme after shared CSS changes with `npm run build:keycloak-theme`. Native templates/scripts remain under `infra/keycloak/themes/pocketledger`, generated CSS/SVG under ignored `.artifacts/keycloak-theme`.
+The realm import contains no users or real secrets; runtime placeholders supply the persisted client secret. Ordinary import skips an existing realm. `keycloak-config` authenticates the local administrator to reconcile the versioned registration flow, user profile, realm/client policies, and exact callback/logout URLs while preserving client credentials and users. It upgrades existing Phase 1 realms without reimporting or resetting them. Build the provider with `npm run build:keycloak-provider` before startup; Docker compiles against Keycloak 26.8.1 with a pinned JDK image, so no host Java/Maven install is needed. Its administrative bootstrap grant is not an application login path; Direct Access Grants remain disabled for `pocketledger-web`. Regenerate the theme after shared CSS changes with `npm run build:keycloak-theme`. Native templates/scripts remain under `infra/keycloak/themes/pocketledger`, generated CSS/SVG under ignored `.artifacts/keycloak-theme`.
 
 No reset or existing-account migration is performed. Reusing a legacy email creates an independent external account and never transfers expenses. Both application and identity volumes, old account IDs, expenses, and AppHost UserSecretsId are retained. A future reset requires an explicit, reviewed data/ownership procedure; do not delete volumes to repair configuration. The additive migration’s downgrade refuses to erase external identities.
 
@@ -149,8 +150,10 @@ For repeatable acceptance with disposable services:
 ```shell
 npm --prefix tests/PocketLedger.E2E ci
 npx --prefix tests/PocketLedger.E2E playwright install chromium
+npm run build:keycloak-provider
 npm run build:keycloak-theme
 npm --prefix tests/PocketLedger.E2E test
+E2E_REALM_BASELINE=phase1 npm --prefix tests/PocketLedger.E2E test
 ```
 
 See the [E2E harness guide](tests/PocketLedger.E2E/README.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for evidence and remaining milestone boundaries. The browser suite runs separately from the dashboard’s backend `tests` resource and has its own CI job.
