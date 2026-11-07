@@ -22,7 +22,7 @@ function paths(output) {
 }
 
 export function affectedAreas(files) {
-  const shared = files.some(file => /^(scripts\/|\.lefthook\/|\.github\/|package(?:-lock)?\.json$|lefthook\.yml$|\.editorconfig$|\.gitattributes$|\.gitleaks\.toml$)/.test(file))
+  const shared = files.some(file => /^(coverage\.runsettings$|\.config\/|scripts\/|\.lefthook\/|\.github\/|package(?:-lock)?\.json$|lefthook\.yml$|\.editorconfig$|\.gitattributes$|\.gitleaks\.toml$)/.test(file))
   return {
     backend: shared || files.some(file => /^(PocketLedger\.AppHost\/|tests\/|src\/PocketLedger\.(?!Web\/))/.test(file)
       || /(?:\.(?:cs|csproj|props|targets|slnx)|global\.json|[Nn]u[Gg]et\.[Cc]onfig)$/.test(file)),
@@ -50,6 +50,13 @@ export function pushedFiles(input, cwd) {
     for (const file of paths(changed)) files.add(file)
   }
   return [...files]
+}
+
+export function pushedCommits(input, cwd) {
+  // Reuse protocol validation, including deletions and malformed IDs.
+  pushedFiles(input, cwd)
+  if (!input.trim()) return [git(['rev-parse', 'HEAD'], cwd).trim()]
+  return [...new Set(input.trim().split('\n').map(line => line.trim().split(/\s+/)[1]).filter(id => !zeroObjectId.test(id)))]
 }
 
 function run(command, args, cwd) {
@@ -124,11 +131,16 @@ export function main(mode, cwd = process.cwd(), input = '') {
     case 'pre-push': {
       const areas = affectedAreas(pushedFiles(input, cwd))
       if (areas.backend || areas.frontend) {
-        console.log('Pre-push checks validate the current working tree; CI validates the committed revision.')
-        run(process.execPath, ['--test', 'scripts/checks.test.mjs'], cwd)
+        console.log('Build/lint checks inspect the working tree; coverage compares each pushed commit against fresh origin/main.')
+        run(process.execPath, ['--test', 'scripts/checks.test.mjs', 'scripts/coverage.test.mjs'], cwd)
       }
       if (areas.backend) backend(cwd, false)
       if (areas.frontend) frontend(cwd)
+      if (areas.backend || areas.frontend) {
+        run(process.execPath, ['scripts/coverage.mjs', 'check',
+          ...pushedCommits(input, cwd).flatMap(id => ['--head', id]),
+          ...Object.entries(areas).filter(([, affected]) => affected).flatMap(([area]) => ['--area', area])], cwd)
+      }
       break
     }
     case 'backend':

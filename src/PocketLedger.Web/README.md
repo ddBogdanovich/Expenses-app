@@ -15,6 +15,7 @@ npm ci
 npm run build
 npm run lint
 npm test
+npm run test:coverage
 ```
 
 Run the full application through Aspire from `../../PocketLedger.AppHost` using `aspire start --non-interactive`, then open the `web` resource in its dashboard. For frontend-only work, `npm run dev` starts Vite independently.
@@ -30,3 +31,7 @@ The default login/registration behavior above remains unchanged. **Try Keycloak 
 See root setup instructions, ADR 0014, and learning note 016. Run `npm run build:keycloak-theme` at the repository root after CSS changes. Native hosted templates consume compiled styles; they do not embed the SPA or forward passwords to the API. Account columns also respond to a named content-width container so enlarged text retains a usable form.
 
 Phase 3 adds hosted “Create an account” / “Log in” links, email/password-only registration, native field errors, password visibility, pending protection, and the preserved confirmation. Keycloak displays the stored email only after verified creation in the same server-side transaction; email ownership is not verified. “View today’s spending” completes the code flow and opens `/preview`. Build the provider as well as the theme before startup. The default app account screens and protected design reference retain their existing responsibilities. See [ADR 0016](../../docs/decisions/0016-hosted-registration-confirmation.md) and [learning note 018](../../docs/learning/018-hosted-authentication-experience.md).
+
+## Coverage
+
+`test:coverage` uses the repository's shared Vitest V8 scope and writes HTML/LCOV/JSON under `.artifacts/coverage/current/frontend` at the repository root. Unimported implementation files and development pages count; test/spec files and type declarations do not. The root pre-push/CI gate compares exact committed coverage against main and rejects line or branch degradation. See [learning note 020](../../docs/learning/020-coverage-and-regression-gates.md).
