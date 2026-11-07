@@ -97,16 +97,18 @@ Criteria C1–C19 below refer to the PRD's Definition of done checkboxes in thei
 **Test-first gate:** Before backend session/security changes, add and run expiration, both-session logout, callback/state/replay, approved-return, forged-request, invalid-token, provider-outage, and secret-free logging cases. Use the existing browser for full login/session/logout journeys and HTTP integration tests for protocol/security boundaries. Assert backend failure contracts here; user-facing recovery presentation belongs to Phase 5. Record expected missing behavior and preserve earlier tests that already pass.
 **Tasks:**
 
-- [ ] Complete the authentication/session slices and Infrastructure policies for session restoration, bounded idle/absolute lifetime, provider renewal where selected, explicit logout, and protected-response caching. Keep API unauthorized responses distinguishable from browser login redirects.
-- [ ] Complete callback-state/correlation/PKCE validation, approved return destinations, CSRF defenses for session-changing operations, and secure cookie/server-secret settings required by the selected session mechanism. Preserve the API `/api` route convention and existing thin-controller boundaries.
-- [ ] Define stable responses for unavailable Keycloak, cancelled/failed callbacks, expired transactions, and invalid sessions so the frontend can offer recovery without redirect loops. Exclude credentials, tokens, cookies, and client secrets from logs and telemetry.
-- [ ] Rerun the test-first isolated security tests for missing/expired/tampered/wrong-issuer/wrong-audience credentials, ID tokens presented as API credentials, replay/invalid callback state, unapproved redirects, forged session changes, and logout to green, plus earlier E2E regressions. Exercise provider outage and expired sessions without changing frontend behavior in this phase; record red/green evidence.
-- [ ] Run relevant backend checks and Aspire verification; document session policy, failure responses, HTTPS/local-development differences, and the session-security learning exercise in affected documentation.
+- [x] Complete the authentication/session slices and Infrastructure policies for session restoration, bounded idle/absolute lifetime, provider renewal where selected, explicit logout, and protected-response caching. Keep API unauthorized responses distinguishable from browser login redirects.
+- [x] Complete callback-state/correlation/PKCE validation, approved return destinations, CSRF defenses for session-changing operations, and secure cookie/server-secret settings required by the selected session mechanism. Preserve the API `/api` route convention and existing thin-controller boundaries.
+- [x] Define stable responses for unavailable Keycloak, cancelled/failed callbacks, expired transactions, and invalid sessions so the frontend can offer recovery without redirect loops. Exclude credentials, tokens, cookies, and client secrets from logs and telemetry.
+- [x] Rerun the test-first isolated security tests for missing/expired/tampered/wrong-issuer/wrong-audience credentials, ID tokens presented as API credentials, replay/invalid callback state, unapproved redirects, forged session changes, and logout to green, plus earlier E2E regressions. Exercise provider outage and expired sessions without changing frontend behavior in this phase; record red/green evidence.
+- [x] Run relevant backend checks and Aspire verification; document session policy, failure responses, HTTPS/local-development differences, and the session-security learning exercise in affected documentation.
 
 **Definition of done:**
 
-- [ ] Independent HTTP/integration tests prove session expiration and both-session logout, reject invalid credentials/redirects/forged requests, and demonstrate bounded recovery responses for each specified provider/callback failure.
-- [ ] Captured logs contain no sensitive authentication values, and existing preview browser login/registration remain functional.
+- [x] Independent HTTP/integration tests prove session expiration and both-session logout, reject invalid credentials/redirects/forged requests, and demonstrate bounded recovery responses for each specified provider/callback failure.
+- [x] Captured logs contain no sensitive authentication values, and existing preview browser login/registration remain functional.
+
+**Evidence:** [Learning note 019](learning/019-session-security-and-failure-contracts.md) and [ADR 0017](decisions/0017-bounded-authentication-failures.md). Frontend recovery and default cutover remain Phase 5.
 
 ### Phase 5: Make the Keycloak journey the default browser experience
 

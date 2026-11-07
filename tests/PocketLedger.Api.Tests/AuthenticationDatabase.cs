@@ -19,9 +19,9 @@ public sealed class AuthenticationDatabase : IAsyncLifetime
 
     public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
 
-    internal WebApplicationFactory<Program> CreateApplication() => new AuthenticationApplication(_postgres.GetConnectionString(), SigningKey);
+    internal WebApplicationFactory<Program> CreateApplication(Action<IWebHostBuilder>? configure = null) => new AuthenticationApplication(_postgres.GetConnectionString(), SigningKey, configure);
 
-    private sealed class AuthenticationApplication(string connectionString, string signingKey) : WebApplicationFactory<Program>
+    private sealed class AuthenticationApplication(string connectionString, string signingKey, Action<IWebHostBuilder>? configure) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -29,6 +29,7 @@ public sealed class AuthenticationDatabase : IAsyncLifetime
             builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:expenses", connectionString);
             builder.UseSetting("Jwt:SigningKey", signingKey);
+            configure?.Invoke(builder);
         }
     }
 }

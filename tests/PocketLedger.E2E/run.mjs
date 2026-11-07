@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { mkdir, open, readFile, writeFile, unlink, cp, rm } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { createServer as createHttpServer } from 'node:http'
+import { createServer as createHttpServer, request as httpRequest } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { GenericContainer, Network, Wait } from 'testcontainers'
 
@@ -15,6 +15,8 @@ const logs = []
 const containers = []
 let network
 let controlServer
+let providerProxy
+let providerOffline = false
 await mkdir(artifacts, { recursive: true })
 async function port() {
   const server = createServer()
@@ -71,6 +73,11 @@ try {
   const realmTemplate = process.env.E2E_REALM_BASELINE === 'phase1'
     ? 'tests/PocketLedger.E2E/fixtures/phase1-realm.json' : 'infra/keycloak/pocketledger-realm.json'
   const realm = JSON.parse(await readFile(`${root}${realmTemplate}`, 'utf8'))
+  // Test-only public code-flow client proves token confusion/PKCE boundaries without password grants.
+  realm.clients.push({ clientId: 'pocketledger-security-test', enabled: true, publicClient: true,
+    standardFlowEnabled: true, directAccessGrantsEnabled: false,
+    redirectUris: [`${baseURL}/security-test/callback`], defaultClientScopes: ['email', 'profile'],
+    attributes: { 'pkce.code.challenge.method': 'S256' } })
   realm.users = [{ id: subject, username: 'preview@example.com', email: 'preview@example.com', enabled: true,
     firstName: 'Preview', lastName: 'Owner', credentials: [{ type: 'password', value: userPassword, temporary: false }] }]
   const keycloak = await new GenericContainer('quay.io/keycloak/keycloak:26.8.1')
@@ -86,7 +93,21 @@ try {
     .withCommand(['start-dev', '--import-realm', '--spi-theme--cache-themes=false', '--spi-theme--cache-templates=false', '--spi-theme--static-max-age=-1']).withExposedPorts(8080, 9000)
     .withWaitStrategy(Wait.forHttp('/health/ready', 9000).forStatusCode(200)).withStartupTimeout(120_000).start()
   containers.push(keycloak)
-  const keycloakURL = `http://localhost:${keycloak.getMappedPort(8080)}`
+  const providerTarget = `http://localhost:${keycloak.getMappedPort(8080)}`
+  // A disposable fault switch exercises genuine metadata/PAR/code-exchange HTTP failures.
+  providerProxy = createHttpServer((request, response) => {
+    if (providerOffline) { response.writeHead(503).end(); return }
+    const upstream = httpRequest(new URL(request.url, providerTarget), {
+      method: request.method, headers: request.headers,
+    }, result => {
+      response.writeHead(result.statusCode, result.headers)
+      result.pipe(response)
+    })
+    upstream.on('error', () => response.writeHead(503).end())
+    request.pipe(upstream)
+  })
+  await new Promise(resolve => providerProxy.listen(0, 'localhost', resolve))
+  const keycloakURL = `http://localhost:${providerProxy.address().port}`
   // Run the same non-destructive reconciliation as Aspire, twice to verify idempotency.
   for (let attempt = 0; attempt < 2; attempt++) {
     const configuration = await start('node', ['scripts/configure-keycloak.mjs'], {
@@ -112,10 +133,30 @@ try {
   await ready(baseURL, web)
   const controlToken = randomBytes(32).toString('hex')
   controlServer = createHttpServer(async (request, response) => {
-    if (request.method !== 'POST' || !['/restart-api', '/identity-count', '/require-confirmation'].includes(request.url) || request.headers['x-e2e-control'] !== controlToken) {
+    if (request.method !== 'POST' || !['/restart-api', '/identity-count', '/require-confirmation', '/expire-sessions', '/provider-offline', '/provider-online', '/audit-auth-logs'].includes(request.url) || request.headers['x-e2e-control'] !== controlToken) {
       response.writeHead(404).end(); return
     }
     try {
+      if (request.url === '/provider-offline' || request.url === '/provider-online') {
+        providerOffline = request.url === '/provider-offline'
+        response.writeHead(204).end()
+        return
+      }
+      if (request.url === '/audit-auth-logs') {
+        const captured = await readFile(`${artifacts}/api.log`, 'utf8')
+        let body = ''
+        for await (const chunk of request) body += chunk
+        const { markers = [] } = body ? JSON.parse(body) : {}
+        const sensitive = [password, userPassword, clientSecret, 'sensitive-description', 'sensitive-code', 'sensitive-state', ...markers]
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ clean: sensitive.every(value => !captured.includes(value)) }))
+        return
+      }
+      if (request.url === '/expire-sessions') {
+        const result = await postgres.exec(['psql', '-U', 'postgres', '-d', 'expenses', '-c', `UPDATE "BrowserSessions" SET "ExpiresUtc" = NOW() - INTERVAL '1 minute'`])
+        if (result.exitCode !== 0) throw new Error('Session expiry fixture failed.')
+        response.writeHead(204).end()
+        return
+      }
       if (request.url === '/identity-count' || request.url === '/require-confirmation') {
         let body = ''
         for await (const chunk of request) body += chunk
@@ -158,7 +199,7 @@ try {
   await new Promise(resolve => controlServer.listen(0, '127.0.0.1', resolve))
   const controlURL = `http://127.0.0.1:${controlServer.address().port}`
   const test = spawn('npx', ['playwright', 'test', ...process.argv.slice(2)], {
-    cwd: fileURLToPath(new URL('.', import.meta.url)), env: { ...process.env, E2E_BASE_URL: baseURL, E2E_USER_EMAIL: 'preview@example.com', E2E_USER_PASSWORD: userPassword, E2E_PROVIDER_SUBJECT: subject, E2E_CONTROL_URL: controlURL, E2E_CONTROL_TOKEN: controlToken }, stdio: 'inherit',
+    cwd: fileURLToPath(new URL('.', import.meta.url)), env: { ...process.env, E2E_BASE_URL: baseURL, E2E_AUTHORITY: authority, E2E_USER_EMAIL: 'preview@example.com', E2E_USER_PASSWORD: userPassword, E2E_PROVIDER_SUBJECT: subject, E2E_CONTROL_URL: controlURL, E2E_CONTROL_TOKEN: controlToken }, stdio: 'inherit',
   })
   process.exitCode = await new Promise(resolve => test.on('exit', code => resolve(code ?? 1)))
   if (process.env.E2E_INSPECT === '1') {
@@ -168,6 +209,7 @@ try {
   }
 } finally {
   if (controlServer) await new Promise(resolve => controlServer.close(resolve))
+  if (providerProxy) await new Promise(resolve => providerProxy.close(resolve))
   await unlink(`${artifacts}/inspection.json`).catch(() => {})
   for (const child of processes.reverse()) stop(child)
   for (const log of logs) await log.close()

@@ -57,3 +57,7 @@ UI/UX review uses the project-local guidance for labels, connected errors, focus
 2. Trace the new account ID from `RegistrationUserCreation` through the authentication-session note, required action, OIDC callback, and local issuer/subject mapping. Where would a forged query flag be rejected?
 3. Explain why disabling credential inputs before a native POST breaks submission, while disabling the submit button and using readonly fields does not.
 4. Assign the confirmation action to an existing disposable user without its registration note. Why must the action fail even after a correct password?
+
+## Phase 4 contract supplement
+
+Phase 3's callback-failure redirect evidence above records the behavior at that milestone. Phase 4 replaces it with bounded backend JSON responses; the retained existing-user rejection test now asserts `auth.cancelled`, no confirmation, and no local session. The creation-note invariant is unchanged. See [learning note 019](019-session-security-and-failure-contracts.md) and [ADR 0017](../decisions/0017-bounded-authentication-failures.md).

@@ -145,11 +145,10 @@ test('an existing user cannot receive confirmation without the server-created re
   await page.getByLabel('Email address', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Log in', exact: true }).click()
-  // A rejected required action ends the OIDC transaction through the existing
-  // callback-failure contract, rather than rendering a successful confirmation.
-  await expect(page).toHaveURL(/\/preview\?error=authentication_failed$/)
-  await expect(page.getByText('We couldn’t complete login. Please try again.')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Log in with Keycloak' })).toBeVisible()
+  // Phase 4 replaces the old redirect flag with a bounded backend contract.
+  // The same negative assertion remains: a rejected action never authenticates.
+  await expect(page).toHaveURL(/\/api\/auth\/preview\/callback\?/)
+  await expect.poll(async () => page.locator('body').innerText()).toContain('auth.cancelled')
   await expect(page.getByRole('heading', { name: 'You’re all set.' })).toHaveCount(0)
   expect((await context.request.get('/api/auth/me', { headers: { 'X-PocketLedger-Auth': 'preview' } })).status()).toBe(401)
 })
