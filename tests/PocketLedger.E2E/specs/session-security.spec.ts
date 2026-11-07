@@ -123,10 +123,17 @@ test('provider HTTP outage bounds new authentication and code exchange while loc
     await unauthenticated.close()
   }
   markers.push(...(await context.cookies()).filter(cookie => cookie.name === 'PocketLedger.Preview').map(cookie => cookie.value))
-  const audit = await context.request.post(`${process.env.E2E_CONTROL_URL}/audit-auth-logs`, {
-    headers: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN! }, data: { markers },
+  const auditTraceId = randomBytes(16).toString('hex')
+  const invalid = await context.request.get('/api/auth/preview/callback?code=sensitive-code&state=sensitive-state', {
+    maxRedirects: 0, headers: { traceparent: `00-${auditTraceId}-${randomBytes(8).toString('hex')}-01` },
   })
-  expect(await audit.json()).toEqual({ clean: true })
+  expect(invalid.status()).toBe(400)
+  await expect.poll(async () => {
+    const audit = await context.request.post(`${process.env.E2E_CONTROL_URL}/audit-auth-logs`, {
+      headers: { 'X-E2E-Control': process.env.E2E_CONTROL_TOKEN! }, data: { markers, afterTraceId: auditTraceId },
+    })
+    return audit.json()
+  }).toEqual({ clean: true, callbackTraceObserved: true })
 })
 
 

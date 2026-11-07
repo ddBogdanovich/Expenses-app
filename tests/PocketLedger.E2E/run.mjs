@@ -15,6 +15,8 @@ const logs = []
 const containers = []
 let network
 let controlServer
+let telemetryReceiver
+const tracePayloads = []
 let providerProxy
 let providerOffline = false
 await mkdir(artifacts, { recursive: true })
@@ -125,6 +127,17 @@ try {
     Keycloak__Enabled: 'true', Keycloak__Authority: authority, Keycloak__ClientSecret: clientSecret, Keycloak__BrowserOrigin: baseURL,
     Keycloak__KeyRingPath: keyRingDirectory,
   }
+  // Receive actual OTLP protobuf exports from the separate API process, avoiding
+  // process-global instrumentation races between in-process HTTP test hosts.
+  telemetryReceiver = createHttpServer(async (request, response) => {
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    if (request.url === '/v1/traces') tracePayloads.push(Buffer.concat(chunks))
+    response.writeHead(200, { 'Content-Type': 'application/x-protobuf' }).end()
+  })
+  await new Promise(resolve => telemetryReceiver.listen(0, '127.0.0.1', resolve))
+  apiEnvironment.OTEL_EXPORTER_OTLP_ENDPOINT = `http://127.0.0.1:${telemetryReceiver.address().port}`
+  apiEnvironment.OTEL_EXPORTER_OTLP_PROTOCOL = 'http/protobuf'
   let api = await start('dotnet', apiArgs, apiEnvironment, 'api')
   await ready(`http://localhost:${apiPort}/api/alive`, api)
   const web = await start('npm', ['--prefix', frontendDirectory, 'run', 'dev', '--', '--host', 'localhost', '--port', `${webPort}`, '--strictPort'], {
@@ -146,9 +159,14 @@ try {
         const captured = await readFile(`${artifacts}/api.log`, 'utf8')
         let body = ''
         for await (const chunk of request) body += chunk
-        const { markers = [] } = body ? JSON.parse(body) : {}
+        const { markers = [], afterTraceId } = body ? JSON.parse(body) : {}
         const sensitive = [password, userPassword, clientSecret, 'sensitive-description', 'sensitive-code', 'sensitive-state', ...markers]
-        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ clean: sensitive.every(value => !captured.includes(value)) }))
+        const clean = sensitive.every(value => !captured.includes(value) && tracePayloads.every(payload => !payload.includes(Buffer.from(value))))
+        // The final request's W3C trace ID is a flush barrier: older unrelated
+        // callback spans cannot satisfy the telemetry-presence assertion.
+        const callbackTraceObserved = typeof afterTraceId === 'string' && /^[a-f0-9]{32}$/.test(afterTraceId) && tracePayloads.some(payload =>
+          payload.includes(Buffer.from(afterTraceId, 'hex')) && payload.includes(Buffer.from('/api/auth/preview/callback')))
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ clean, callbackTraceObserved }))
         return
       }
       if (request.url === '/expire-sessions') {
@@ -212,6 +230,7 @@ try {
   if (providerProxy) await new Promise(resolve => providerProxy.close(resolve))
   await unlink(`${artifacts}/inspection.json`).catch(() => {})
   for (const child of processes.reverse()) stop(child)
+  if (telemetryReceiver) await new Promise(resolve => telemetryReceiver.close(resolve))
   for (const log of logs) await log.close()
   await rm(frontendDirectory, { recursive: true, force: true })
   await rm(keyRingDirectory, { recursive: true, force: true })
