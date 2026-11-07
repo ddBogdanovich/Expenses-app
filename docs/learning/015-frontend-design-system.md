@@ -71,3 +71,7 @@ A development-only route is not automatically an authenticated route. Selecting 
 The API check belongs to the route gate, not the local demo controls. No role system, token persistence, or new authentication endpoint was added. Try an expired token or an offline session check: neither should display the reference. Then retry after restoring connectivity and verify that Back to today preserves your session.
 
 The authentication correction passed all 25 frontend behavior tests, production build, lint, and code review. Playwright MCP confirmed signed-out visits do not load the reference module and login continuation waits for successful session verification. Unavailable or rejected checks do not expose examples, and retry/logout/reload/history work correctly. The updated reference/today headers passed 36 viewport/text combinations, including phones, landscape, desktop, and 200% text; keyboard navigation and visible focus were also checked. Sample API responses were intercepted locally, without modifying real accounts.
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

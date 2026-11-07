@@ -113,23 +113,25 @@ Criteria C1–C19 below refer to the PRD's Definition of done checkboxes in thei
 ### Phase 5: Make the Keycloak journey the default browser experience
 
 **Goal:** Deliver the complete user-facing migration, including session restoration, recovery states, logout behavior, and the protected design reference.
-**Layers:** fe
+**Layers:** fe, plus owner-approved narrow backend browser-recovery and expired-session logout bridges (ADR 0019)
 **Depends on:** Phase 4
 **Covers:** C3, C5–C9, C12 (browser evidence), C14–C17, C19.
 **Test-first gate:** Before changing default browser routes or session consumers, add and run E2E tests for `/login` and `/register` entering Keycloak by default, registration confirmation, reload/revisit restoration, development-reference return, expiration, logout followed by Back/reload, and recoverable provider/callback/transaction failures. Run against Phase 4's preview/default split and record the expected failures in default routing and presentation. Keep previously passing preview journeys as regressions until default equivalents pass; do not replace assertions merely to conceal a broken path.
 **Tasks:**
 
-- [ ] Replace the in-memory bearer-token flow in `Web/src/App.tsx`, `features/authentication/auth-api.ts`, and `features/today/today-api.ts` with the delivered session contract. Make `/login` and `/register` enter the hosted flow by default, remove the temporary preview selector, and preserve safe continuation to `/` or the development design reference.
-- [ ] Adapt `TodayPage.tsx`, `design-system/DesignSystemRoute.tsx`, and their callers to restore/verify sessions before displaying protected content; keep `/design-system` development-only and excluded from production output.
-- [ ] Implement the backend's provider-unavailable, callback cancellation/failure, expired transaction, and expired-session states using existing presentation patterns. Ensure logout clears protected content and browser Back does not reveal cached expense information; keep retry/return actions accessible.
-- [ ] Rerun the test-first default-journey E2E suite to green and update obsolete credential/token unit tests to observable session/redirect tests in `App.test.tsx`, authentication tests, and design-system tests. Exercise real registration/login/reload/revisit/logout plus every new failure state through Playwright MCP, inspect network/storage, complete the full screenshot/accessibility matrix and UI/UX review, and rerun checks after fixes; record red/green evidence.
-- [ ] Run frontend build/lint/behavior tests and the theme checks; update frontend instructions, design guidance/examples, README user journeys, and relevant learning notes to identify Keycloak as the default while recording the pending legacy backend removal.
+- [x] Replace the in-memory bearer-token flow in `Web/src/App.tsx`, `features/authentication/auth-api.ts`, and `features/today/today-api.ts` with the delivered session contract. Make `/login` and `/register` enter the hosted flow by default, remove the temporary preview selector, and preserve safe continuation to `/` or the development design reference.
+- [x] Adapt `TodayPage.tsx`, `design-system/DesignSystemRoute.tsx`, and their callers to restore/verify sessions before displaying protected content; keep `/design-system` development-only and excluded from production output.
+- [x] Implement the backend's provider-unavailable, callback cancellation/failure, expired transaction, and expired-session states using existing presentation patterns. Ensure logout clears protected content and browser Back does not reveal cached expense information; keep retry/return actions accessible.
+- [x] Rerun the test-first default-journey E2E suite to green and update obsolete credential/token unit tests to observable session/redirect tests in `App.test.tsx`, authentication tests, and design-system tests. Exercise real registration/login/reload/revisit/logout plus every new failure state through Playwright MCP, inspect network/storage, complete the full screenshot/accessibility matrix and UI/UX review, and rerun checks after fixes; record red/green evidence.
+- [x] Run frontend build/lint/behavior tests and the theme checks; update frontend instructions, design guidance/examples, README user journeys, and relevant learning notes to identify Keycloak as the default while recording the pending legacy backend removal.
 
 **Definition of done:**
 
-- [ ] Default browser entry points deliver registration confirmation, login, valid-session restoration, expiration recovery, and complete logout. Failure recovery has no infinite redirects, false authentication, or indefinite loading state.
-- [ ] Browser Back/reload after logout do not restore protected content; design-reference access/return work only in development, and production build inspection confirms its exclusion.
-- [ ] Network inspection shows password submission only to Keycloak and no provider tokens in localStorage/sessionStorage. Final UI review has no unresolved findings and frontend/theme checks pass.
+- [x] Default browser entry points deliver registration confirmation, login, valid-session restoration, expiration recovery, and complete logout. Failure recovery has no infinite redirects, false authentication, or indefinite loading state.
+- [x] Browser Back/reload after logout do not restore protected content; design-reference access/return work only in development, and production build inspection confirms its exclusion.
+- [x] Network inspection shows password submission only to Keycloak and no provider tokens in localStorage/sessionStorage. Final UI review has no unresolved findings and frontend/theme checks pass.
+
+**Evidence:** [Learning note 021](learning/021-default-browser-session.md) and [ADR 0019](decisions/0019-default-browser-session.md). Keycloak is the browser default; the legacy backend and local-environment enablement restriction remain until later cutover work. No accounts, expenses, volumes or secrets were reset.
 
 ### Phase 6: Retire first-party credentials and complete backend cutover
 

@@ -38,3 +38,7 @@ Inputs use 16px text, with larger labels and supporting copy. Inline errors and 
 ## Shared design patterns
 
 The account page now composes `PageShell` for its frame and `Notice` for informational session messages and request failures. Form controls retain HeroUI behavior, with `.ledger-form`, `.ledger-input`, and `.primary-action` recipes and centralized theme tokens. See the [design guide](../design/README.md) and [Learning note 015](015-frontend-design-system.md).
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

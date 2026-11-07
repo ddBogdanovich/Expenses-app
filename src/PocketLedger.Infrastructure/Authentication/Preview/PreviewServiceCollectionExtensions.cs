@@ -144,6 +144,12 @@ public static class PreviewServiceCollectionExtensions
             options.Events.OnRedirectToIdentityProvider = context =>
             {
                 context.ProtocolMessage.RedirectUri = settings.BrowserOrigin + PreviewAuthentication.CallbackPath;
+                if (context.Properties.Items.ContainsKey(PreviewAuthentication.RegistrationProperty))
+                {
+                    // Keycloak uses a separate registration entry endpoint with
+                    // the same code-flow parameters, protected state and PKCE.
+                    context.ProtocolMessage.IssuerAddress = settings.Authority + "/protocol/openid-connect/registrations";
+                }
                 return Task.CompletedTask;
             };
             options.Events.OnAuthorizationCodeReceived = context =>
@@ -214,7 +220,7 @@ public static class PreviewServiceCollectionExtensions
                 }
 
                 return PreviewFailureResponse.WriteAsync(context.HttpContext, code,
-                    unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status400BadRequest);
+                    unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status400BadRequest, context.Properties?.RedirectUri);
             };
         });
     }

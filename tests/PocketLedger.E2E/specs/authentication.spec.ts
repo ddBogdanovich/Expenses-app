@@ -3,30 +3,21 @@ import { expect, test } from '@playwright/test'
 
 const previewHeaders = { 'X-PocketLedger-Auth': 'preview' }
 
-test('legacy registration and login remain the default', async ({ page, context }) => {
+test('legacy backend remains isolated until Phase 6 without browser credential forms', async ({ context }) => {
   const email = `legacy-${randomUUID()}@example.com`
   const password = `Test-${randomUUID()}`
-  await page.goto('/register')
-  await page.getByLabel('Email address', { exact: true }).fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  const registered = page.waitForResponse(response => response.url().endsWith('/api/auth/register') && response.request().method() === 'POST')
-  await page.getByRole('button', { name: 'Create account', exact: true }).click()
-  const { accessToken } = await (await registered).json()
+  const registered = await context.request.post('/api/auth/register', { data: { email, password } })
+  expect(registered.status()).toBe(201)
+  const { accessToken } = await registered.json()
   expect((await context.request.get('/api/expenses/today', { headers: { ...previewHeaders, Authorization: `Bearer ${accessToken}` } })).status()).toBe(401)
-  await expect(page.getByRole('heading', { name: 'You’re all set.' })).toBeVisible()
-  await page.getByRole('button', { name: 'View today’s spending' }).click()
-  await expect(page.getByRole('heading', { name: 'Today’s spending' })).toBeVisible()
-  await page.getByRole('button', { name: 'Log out', exact: true }).click()
-  await page.getByLabel('Email address', { exact: true }).fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Log in', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Today’s spending' })).toBeVisible()
+  const loggedIn = await context.request.post('/api/auth/login', { data: { email, password } })
+  expect(loggedIn.status()).toBe(200)
+  expect((await context.request.get('/api/auth/me', { headers: { Authorization: `Bearer ${(await loggedIn.json()).accessToken}` } })).status()).toBe(200)
 })
 
 test('seeded preview login owns spending, survives reload, and ends both sessions', async ({ page, context }) => {
   expect((await context.request.get('/api/expenses/today', { headers: previewHeaders })).status()).toBe(401)
   await page.goto('/login')
-  await page.getByRole('link', { name: 'Try Keycloak preview', exact: true }).click()
   await expect(page).toHaveURL(/\/realms\/pocketledger\//)
   await page.getByLabel('Email address', { exact: true }).fill(process.env.E2E_USER_EMAIL!)
   await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_USER_PASSWORD!)
@@ -73,11 +64,11 @@ test('seeded preview login owns spending, survives reload, and ends both session
   const confirm = page.getByRole('button', { name: /^(Yes|Log out)$/ })
   await expect(confirm).toBeVisible()
   await confirm.click()
-  await expect(page.getByRole('heading', { name: 'Keycloak preview' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'You’re logged out.' })).toBeVisible()
   expect((await context.request.get('/api/auth/me', { headers: previewHeaders })).status()).toBe(401)
   await context.addCookies(oldCookies.filter(cookie => cookie.name.includes('Preview')))
   expect((await context.request.get('/api/auth/me', { headers: previewHeaders })).status()).toBe(401)
   await context.clearCookies({ name: /Preview/ })
-  await page.getByRole('link', { name: 'Log in with Keycloak', exact: true }).click()
+  await page.getByRole('link', { name: 'Log in', exact: true }).click()
   await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
 })

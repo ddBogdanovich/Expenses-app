@@ -1,8 +1,11 @@
+import { sessionHeaders } from '../authentication/auth-api'
+
 export type DailyTotal = { purchaseDate: string; totalGrosz: string }
 
-export async function getDailyTotal(token: string, signal: AbortSignal, preview = false): Promise<DailyTotal | 'unauthorized'> {
+export async function getDailyTotal(signal: AbortSignal): Promise<DailyTotal | 'unauthorized'> {
   const response = await fetch('/api/expenses/today', {
-    headers: preview ? { 'X-PocketLedger-Auth': 'preview' } : { Authorization: `Bearer ${token}` },
+    headers: sessionHeaders,
+    credentials: 'same-origin',
     cache: 'no-store',
     signal,
   })

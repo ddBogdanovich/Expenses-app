@@ -73,3 +73,7 @@ The retained E2E harness uses disposable services, an authenticated loopback con
 3. Compare an idle deadline to an absolute deadline after six hours of active use. Which may move?
 4. Return HTTP 503 from the disposable provider during code exchange. Verify local access is not created and the response contains only the documented error contract.
 5. Explain why a provider logout confirmation must finish before claiming its SSO session ended, even though PocketLedger has already revoked its own ticket.
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

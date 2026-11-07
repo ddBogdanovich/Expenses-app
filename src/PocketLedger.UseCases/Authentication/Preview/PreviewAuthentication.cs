@@ -12,6 +12,7 @@ public static class PreviewAuthentication
     public const string AbsoluteExpiryProperty = "pocketledger:absolute-expiry";
     public const string CallbackPath = "/api/auth/preview/callback";
     public const string SignedOutPath = "/api/auth/preview/signed-out";
+    public const string RegistrationProperty = "pocketledger.registration";
     public const string LandingPath = "/preview";
 }
 

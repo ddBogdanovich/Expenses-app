@@ -9,7 +9,7 @@ namespace PocketLedger.UseCases.Authentication.Preview;
 public sealed class PreviewStartController(IPreviewAvailability availability) : ControllerBase
 {
     [HttpGet]
-    public IActionResult Start([FromQuery(Name = "returnUrl")] string? destination = null)
+    public IActionResult Start([FromQuery(Name = "returnUrl")] string? destination = null, [FromQuery] string? mode = null)
     {
         if (!availability.Enabled)
         {
@@ -23,6 +23,17 @@ public sealed class PreviewStartController(IPreviewAvailability availability) : 
             return BadRequest(new { code = "auth.invalid_return", title = "The return destination is not approved." });
         }
 
-        return Challenge(new AuthenticationProperties { RedirectUri = destination }, PreviewAuthentication.OidcScheme);
+        if (mode is not (null or "login" or "register"))
+        {
+            return BadRequest(new { code = "auth.invalid_mode", title = "The login mode is not supported." });
+        }
+
+        var properties = new AuthenticationProperties { RedirectUri = destination };
+        if (mode == "register")
+        {
+            properties.Items[PreviewAuthentication.RegistrationProperty] = "true";
+        }
+
+        return Challenge(properties, PreviewAuthentication.OidcScheme);
     }
 }

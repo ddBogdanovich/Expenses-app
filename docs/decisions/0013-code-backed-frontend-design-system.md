@@ -26,3 +26,7 @@ A code-backed reference has its own maintenance cost and is not an automated vis
 ## Scope
 
 This changes presentation structure and development documentation. Existing authentication/API contracts, persistence, Aspire resources, and domain rules are unchanged; the reference now participates in the authenticated navigation flow. Rolling allowance, charts, dark mode, and a larger icon system remain future features, not reference-page promises.
+
+## Phase 5 supplement
+
+[ADR 0019](0019-default-browser-session.md) supersedes the browser preview/default split and the reference’s bearer-session gate. HTML document failures now navigate to bounded recovery; API JSON/status contracts and identity/session security remain. Historical rationale above is retained.
