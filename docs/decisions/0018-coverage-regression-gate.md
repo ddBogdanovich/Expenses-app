@@ -12,7 +12,7 @@ Git has no pull-request-creation hook. Pre-push is the last local Git gate befor
 
 ## Decision
 
-Use Coverlet's VSTest collector 6.0.4 in all three xUnit v2 test projects, including disposable PostgreSQL API tests. Pin ReportGenerator 5.5.12 in `.config/dotnet-tools.json` and merge the overlapping Cobertura reports before reading its exact JSON counts. Provide HTML, merged Cobertura, and JSON reports. Do not change test frameworks or migrate to Microsoft Testing Platform.
+Use Coverlet's VSTest collector 6.0.4 in all three xUnit v2 test projects, including disposable PostgreSQL API tests. Pin ReportGenerator 5.5.12 in `.config/dotnet-tools.json` and merge overlapping OpenCover reports by their individual branch identities before reading exact JSON counts. Coverlet also emits raw Cobertura; provide HTML, merged Cobertura, and JSON reports. Cobertura condition percentages alone cannot distinguish opposite paths covered by separate suites. Each backend coverage command verifies the pinned merger with complementary-path and duplicate-input contracts before collecting application results. Do not change test frameworks or migrate to Microsoft Testing Platform.
 
 Use the matching pinned `@vitest/coverage-v8` 5.0.5 for the current Vitest installation. Include every frontend `src` TypeScript/TSX implementation file, including unimported files and development routes. Exclude test/spec files and type declarations. Produce HTML, LCOV, JSON summary, and console totals. `scripts/coverage.mjs` owns this policy for both compared revisions and the manual frontend coverage command.
 

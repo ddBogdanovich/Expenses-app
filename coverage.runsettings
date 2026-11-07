@@ -4,11 +4,10 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <Format>cobertura</Format>
+          <Format>cobertura,opencover</Format>
           <Include>[PocketLedger.Domain]*,[PocketLedger.UseCases]*,[PocketLedger.Infrastructure]*,[PocketLedger.Api]*,[PocketLedger.ServiceDefaults]*</Include>
           <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
           <IncludeTestAssembly>false</IncludeTestAssembly>
-          <DeterministicReport>true</DeterministicReport>
         </Configuration>
       </DataCollector>
     </DataCollectors>

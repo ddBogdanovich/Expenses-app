@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
+import { verifyMergeContract } from './coverage-merge-contract.mjs'
 
 const toolingRoot = fileURLToPath(new URL('../', import.meta.url))
 const webDirectory = 'src/PocketLedger.Web'
@@ -110,9 +111,9 @@ function backend(root, output, bootstrap) {
   run('dotnet', ['build', 'PocketLedger.slnx', ...buildArguments], root)
   run('dotnet', ['test', 'PocketLedger.slnx', '--no-build', '--no-restore', ...buildArguments,
     '--collect', 'XPlat Code Coverage', '--settings', join(toolingRoot, 'coverage.runsettings'), '--results-directory', raw], root)
-  const files = readdirSync(raw, { recursive: true }).filter(file => file.endsWith('coverage.cobertura.xml'))
+  const files = readdirSync(raw, { recursive: true }).filter(file => file.endsWith('coverage.opencover.xml'))
   if (files.length !== testProjects.length) throw new Error(`Expected ${testProjects.length} collector reports; received ${files.length}.`)
-  run('dotnet', ['tool', 'run', 'reportgenerator', `-reports:${join(raw, '**', 'coverage.cobertura.xml')}`, `-targetdir:${reports}`, '-reporttypes:Html;JsonSummary;Cobertura'], toolingRoot)
+  run('dotnet', ['tool', 'run', 'reportgenerator', `-reports:${join(raw, '**', 'coverage.opencover.xml')}`, `-targetdir:${reports}`, '-reporttypes:Html;JsonSummary;Cobertura'], toolingRoot)
   return backendMetrics(json(join(reports, 'Summary.json')))
 }
 
@@ -198,7 +199,10 @@ export function main(args = process.argv.slice(2), repository = toolingRoot) {
   } })
   const areas = values.area ?? ['backend', 'frontend']
   if (!areas.length || areas.some(area => !['backend', 'frontend'].includes(area))) throw new Error('Choose backend and/or frontend coverage.')
-  if (areas.includes('backend')) run('dotnet', ['tool', 'restore', '--tool-manifest', join(toolingRoot, '.config/dotnet-tools.json')], toolingRoot)
+  if (areas.includes('backend')) {
+    run('dotnet', ['tool', 'restore', '--tool-manifest', join(toolingRoot, '.config/dotnet-tools.json')], toolingRoot)
+    verifyMergeContract(toolingRoot)
+  }
   if (positionals[0] === 'collect') {
     const output = join(repository, '.artifacts/coverage/current')
     const summary = collect(repository, output, areas)
