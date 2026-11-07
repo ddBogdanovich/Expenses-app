@@ -60,6 +60,36 @@ jobs:
         working-directory: src/PocketLedger.Web
       - run: npm run check:frontend
 
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # PRs compare the tested merge candidate to the event's base. Feature pushes
+      # compare fresh main; main pushes compare the previous main revision.
+      COVERAGE_BASE: ${{ github.event.pull_request.base.sha || (github.ref == 'refs/heads/main' && github.event.before) || '' }}
+      COVERAGE_HEAD: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: node scripts/coverage.mjs check --base "$COVERAGE_BASE" --head "$COVERAGE_HEAD"
+      - name: Upload coverage and comparison reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-reports
+          path: .artifacts/coverage/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
   authentication-e2e:
     strategy:
       matrix:

@@ -46,6 +46,8 @@ test('documentation skips builds, while shared policies and dependency changes s
   assert.deepEqual(affectedAreas(['Directory.Packages.props']), { backend: true, frontend: false })
   assert.deepEqual(affectedAreas(['.editorconfig']), { backend: true, frontend: true })
   assert.deepEqual(affectedAreas(['scripts/checks.mjs']), { backend: true, frontend: true })
+  assert.deepEqual(affectedAreas(['coverage.runsettings']), { backend: true, frontend: true })
+  assert.deepEqual(affectedAreas(['.config/dotnet-tools.json']), { backend: true, frontend: true })
 })
 
 test('push selection handles new branches, deleted refs, multiple refs and filenames containing spaces', t => {
