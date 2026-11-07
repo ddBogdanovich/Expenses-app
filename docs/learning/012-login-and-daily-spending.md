@@ -21,3 +21,7 @@ PostgreSQL widens the sum of bigint values to numeric. The API returns the integ
 ## Presentation reuse
 
 `TodayPage` retains fetching, refresh, and session behavior. `SpendingSummary` renders loading/error/ready states, precise formatted PLN, and retry. The same feature-owned component appears in the development design reference; `PageShell` supplies the shared page frame. See the [design guide](../design/README.md) and [Learning note 015](015-frontend-design-system.md).
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

@@ -43,3 +43,7 @@ This adds a small pipeline boundary, failure writer, and transport adapter. Stab
 ## Verification
 
 See [learning note 019](../learning/019-session-security-and-failure-contracts.md) for test-first results, real Keycloak callback/outage tests, session boundaries, log checks, and remaining frontend responsibilities.
+
+## Phase 5 supplement
+
+[ADR 0019](0019-default-browser-session.md) supersedes the browser preview/default split and the reference’s bearer-session gate. HTML document failures now navigate to bounded recovery; API JSON/status contracts and identity/session security remain. Historical rationale above is retained.

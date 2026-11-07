@@ -145,10 +145,10 @@ test('an existing user cannot receive confirmation without the server-created re
   await page.getByLabel('Email address', { exact: true }).fill(email)
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Log in', exact: true }).click()
-  // Phase 4 replaces the old redirect flag with a bounded backend contract.
+  // Phase 5 presents the same bounded cancellation through browser recovery.
   // The same negative assertion remains: a rejected action never authenticates.
-  await expect(page).toHaveURL(/\/api\/auth\/preview\/callback\?/)
-  await expect.poll(async () => page.locator('body').innerText()).toContain('auth.cancelled')
+  await expect(page).toHaveURL(/\/auth\/recovery\?code=auth.cancelled/)
+  await expect(page.getByRole('heading', { name: 'Login was cancelled.' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'You’re all set.' })).toHaveCount(0)
   expect((await context.request.get('/api/auth/me', { headers: { 'X-PocketLedger-Auth': 'preview' } })).status()).toBe(401)
 })

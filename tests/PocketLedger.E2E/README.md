@@ -36,3 +36,9 @@ The retained automated suite complements the required Playwright MCP screenshot/
 ## Backend session-security coverage
 
 `session-security.spec.ts` exercises single-use real callbacks, cancellation/correlation expiry, expired local sessions, provider HTTP 503 during new authentication and code exchange, local logout during an outage, real-provider wrong-PKCE and ID-token API rejection, and secret-free API logs/exported OTLP callback traces. A disposable HTTP proxy supplies provider faults; authenticated loopback controls affect only test-owned services/data. The existing suite retains successful registration/login/reload/restart/ownership/CSRF/tampering/logout coverage. No frontend production behavior is changed by this harness. See [learning note 019](../../docs/learning/019-session-security-and-failure-contracts.md).
+
+## Phase 5 browser default
+
+The retained suite now enters `/login` and `/register` through hosted Keycloak by default. `default-journey.spec.ts` proves confirmation, credential destination/storage, reload/revisit restoration, development-reference return/expiry, callback/provider/cancelled/expired-transaction recovery, Back/reload after logout, and expiry immediately before logout. `authentication.spec.ts` retains legacy backend isolation over HTTP until Phase 6, alongside provider ownership/restart/tamper/replay evidence. The former preview selector and frontend credential forms are removed intentionally; `/preview` remains a compatibility return destination.
+
+The inspection file also contains the disposable control URL/token for intentional expiry/outage/restart checks through Playwright MCP. Treat all inspection data as sensitive. It is removed by harness cleanup and must never be published. Run inspection stacks sequentially because their ignored log/inspection locations are shared. See learning note 021 and ADR 0019.

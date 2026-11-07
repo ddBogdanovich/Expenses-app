@@ -221,7 +221,7 @@ try {
   })
   process.exitCode = await new Promise(resolve => test.on('exit', code => resolve(code ?? 1)))
   if (process.env.E2E_INSPECT === '1') {
-    await writeFile(`${artifacts}/inspection.json`, JSON.stringify({ pid: process.pid, baseURL, email: 'preview@example.com', password: userPassword }), { mode: 0o600 })
+    await writeFile(`${artifacts}/inspection.json`, JSON.stringify({ pid: process.pid, baseURL, email: 'preview@example.com', password: userPassword, controlURL, controlToken }), { mode: 0o600 })
     console.log(`Disposable inspection stack ready at ${baseURL}; stop with SIGINT after MCP verification.`)
     await new Promise(resolve => process.once('SIGINT', resolve))
   }

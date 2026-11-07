@@ -8,9 +8,17 @@ namespace PocketLedger.UseCases.Authentication.Preview;
 [ApiController]
 [Route("api/auth/preview/antiforgery")]
 [Authorize(AuthenticationSchemes = PreviewAuthentication.CookieScheme)]
-public sealed class PreviewAntiforgeryController(IAntiforgery antiforgery) : ControllerBase
+public sealed class PreviewAntiforgeryController(IAntiforgery antiforgery, IPreviewAvailability availability) : ControllerBase
 {
     [HttpGet]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult GetAntiforgery() => Ok(new { antiforgery.GetAndStoreTokens(HttpContext).RequestToken });
+
+    /// <summary>Supplies a logout-only request token even after local session expiry.</summary>
+    [HttpGet("/api/auth/preview/logout-token")]
+    [AllowAnonymous]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public IActionResult GetLogoutToken() => availability.Enabled
+        ? Ok(new { antiforgery.GetAndStoreTokens(HttpContext).RequestToken })
+        : NotFound();
 }

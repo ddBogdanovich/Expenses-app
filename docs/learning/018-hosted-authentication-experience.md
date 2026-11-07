@@ -61,3 +61,7 @@ UI/UX review uses the project-local guidance for labels, connected errors, focus
 ## Phase 4 contract supplement
 
 Phase 3's callback-failure redirect evidence above records the behavior at that milestone. Phase 4 replaces it with bounded backend JSON responses; the retained existing-user rejection test now asserts `auth.cancelled`, no confirmation, and no local session. The creation-note invariant is unchanged. See [learning note 019](019-session-security-and-failure-contracts.md) and [ADR 0017](../decisions/0017-bounded-authentication-failures.md).
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

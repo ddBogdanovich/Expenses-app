@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using PocketLedger.UseCases.Authentication.Preview;
 
@@ -11,7 +12,9 @@ internal sealed class PreviewAntiforgeryFilter(IAntiforgery antiforgery) : IAsyn
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var request = context.HttpContext.Request;
-        if (context.HttpContext.User.Identity?.AuthenticationType != PreviewAuthentication.CookieScheme ||
+        var isLogout = context.ActionDescriptor is ControllerActionDescriptor action &&
+            action.ControllerTypeInfo.AsType() == typeof(PreviewLogoutController);
+        if (context.HttpContext.User.Identity?.AuthenticationType != PreviewAuthentication.CookieScheme && !isLogout ||
             HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method) || HttpMethods.IsOptions(request.Method))
         {
             return;

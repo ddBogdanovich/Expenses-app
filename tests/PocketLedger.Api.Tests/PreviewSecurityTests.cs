@@ -136,6 +136,83 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
         Assert.Equal("auth.provider_unavailable", body.GetProperty("code").GetString());
     }
 
+    [Theory]
+    [InlineData(false, "/api/auth/preview/callback?code=sensitive-code&state=invalid", "auth.callback_failed")]
+    [InlineData(true, "/api/auth/preview/start", "auth.provider_unavailable")]
+    public async Task BrowserFailuresReturnOnlyBoundedCodeToRecoveryAsync(bool unavailable, string path, string code)
+    {
+        using var application = CreateApplication(new SessionClock(), unavailable: unavailable);
+        using var client = CreateClient(application);
+        client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+        using var response = await client.GetAsync(new Uri(path, UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/auth/recovery?code=" + code, response.Headers.Location!.OriginalString);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+    }
+
+    [Fact]
+    public async Task ExpiredLocalSessionCanEndProviderSessionOnlyWithAntiforgeryAsync()
+    {
+        var clock = new SessionClock();
+        using var application = CreateApplication(clock);
+        using var client = CreateClient(application);
+        using var signIn = await client.GetAsync(new Uri("/test/session", UriKind.Relative));
+        clock.Advance(TimeSpan.FromMinutes(31));
+        using var forged = await client.PostAsync(new Uri("/api/auth/preview/logout", UriKind.Relative), null);
+        Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
+        using var tokenResponse = await client.GetAsync(new Uri("/api/auth/preview/logout-token", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+        var token = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/preview/logout");
+        request.Headers.Add("X-CSRF-TOKEN", token.GetProperty("requestToken").GetString());
+        using var logout = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Redirect, logout.StatusCode);
+        Assert.StartsWith("https://identity.example/logout?", logout.Headers.Location!.OriginalString, StringComparison.Ordinal);
+        Assert.True(logout.Headers.CacheControl?.NoStore);
+    }
+
+    [Fact]
+    public async Task RegistrationSelectsTheTrustedProviderEntryAndRejectsUnknownModesAsync()
+    {
+        using var application = CreateApplication(new SessionClock());
+        using var client = CreateClient(application);
+        using var registration = await client.GetAsync(new Uri("/api/auth/preview/start?mode=register&returnUrl=/", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, registration.StatusCode);
+        Assert.StartsWith("https://identity.example/protocol/openid-connect/registrations?", registration.Headers.Location!.OriginalString, StringComparison.Ordinal);
+        Assert.Contains("code_challenge_method=S256", registration.Headers.Location.OriginalString, StringComparison.Ordinal);
+        using var invalid = await client.GetAsync(new Uri("/api/auth/preview/start?mode=unknown", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Null(invalid.Headers.Location);
+    }
+
+    [Theory]
+    [InlineData("/design-system", "&returnUrl=%2Fdesign-system")]
+    [InlineData("https://evil.example", "")]
+    public async Task HtmlOutageRecoveryRetainsOnlyTheExactApprovedReferenceAsync(string destination, string continuation)
+    {
+        using var application = CreateApplication(new SessionClock(), unavailable: true);
+        using var client = CreateClient(application);
+        client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+        // Only approved start destinations reach the provider boundary.
+        var route = destination == "/design-system" ? "/api/auth/preview/start?returnUrl=%2Fdesign-system" : "/api/auth/preview/callback?state=invalid&returnUrl=" + Uri.EscapeDataString(destination);
+        using var response = await client.GetAsync(new Uri(route, UriKind.Relative));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var code = destination == "/design-system" ? "auth.provider_unavailable" : "auth.callback_failed";
+        Assert.Equal("/auth/recovery?code=" + code + continuation, response.Headers.Location!.OriginalString);
+    }
+
+    [Theory]
+    [InlineData("/api/auth/preview/logout/")]
+    [InlineData("/API/AUTH/PREVIEW/LOGOUT")]
+    public async Task AnonymousLogoutRouteVariantsAlwaysRequireAntiforgeryAsync(string route)
+    {
+        using var application = CreateApplication(new SessionClock());
+        using var client = CreateClient(application);
+        using var response = await client.PostAsync(new Uri(route, UriKind.Relative), null);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+    }
+
     private WebApplicationFactory<Program> CreateApplication(SessionClock clock, bool unavailable = false, CapturedLogs? logs = null) =>
         database.CreateApplication(builder =>
         {

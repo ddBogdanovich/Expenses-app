@@ -1,65 +1,140 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { formatTotal } from './features/today/today-api'
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); history.replaceState(null, '', '/') })
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+const identity = { accountId: 'local-account' }
+const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(new Date())
+const total = (totalGrosz = '1234') => ({ purchaseDate: today(), totalGrosz })
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status })
-}
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks(); history.replaceState(null, '', '/') })
 
-async function enterCredentials(email = 'owner@example.com') {
-  const user = userEvent.setup()
-  await user.type(screen.getByLabelText(/Email address/), email)
-  await user.type(screen.getByLabelText(/Password/, { selector: 'input' }), 'password')
-  await user.click(screen.getByRole('button', { name: 'Log in' }))
-  return user
-}
-
-it('guards direct entry, logs in, shows exact PLN for the owner and logs out', async () => {
-  const fetchMock = vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-    .mockResolvedValueOnce(json({ purchaseDate: '2026-11-02', totalGrosz: '1234' }))
+it('verifies the selected cookie session before requesting private spending', async () => {
+  let verify!: (response: Response) => void
+  const fetchMock = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { verify = resolve }))
+    .mockResolvedValue(json(total()))
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  expect(location.pathname).toBe('/login')
-  expect(fetchMock).not.toHaveBeenCalled()
-  const email = '"first last"@example.com'
-  const user = await enterCredentials(email)
-  expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({
-    method: 'POST', body: JSON.stringify({ email, password: 'password' }),
-  }))
+  expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  await act(async () => verify(json(identity)))
   await screen.findByText('12,34 zł')
-  expect(location.pathname).toBe('/')
-  expect(fetchMock).toHaveBeenCalledWith('/api/expenses/today', expect.objectContaining({
-    headers: { Authorization: 'Bearer session' },
-  }))
+  for (const call of fetchMock.mock.calls) expect(call[1]).toMatchObject({ headers: { 'X-PocketLedger-Auth': 'preview' }, cache: 'no-store', credentials: 'same-origin' })
+  expect(history.state).toEqual({ pocketledgerVerified: true })
+})
+
+it('fails closed on verification errors and allows explicit retry', async () => {
+  const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(json(identity)).mockResolvedValue(json(total()))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }))
+  await screen.findByText('12,34 zł')
+})
+
+it('rejects malformed success responses instead of displaying private content', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ accessToken: 'obsolete' })))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'We couldn’t verify your session.' })
+  expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
+})
+
+it('clears protected spending before logout and permits retry after a failed request token', async () => {
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total()))
+    .mockResolvedValueOnce(json({}, 503)).mockResolvedValueOnce(json({}, 401))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Log out' }))
-  expect(location.pathname).toBe('/login')
+  await screen.findByRole('heading', { name: 'Logout is incomplete.' })
+  expect(screen.queryByText('12,34 zł')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Try logout again' }))
+  await screen.findByRole('heading', { name: 'Logout is incomplete.' })
+})
+
+it('submits an antiforgery-protected logout form without exposing a provider token', async () => {
+  const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {})
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total()))
+    .mockResolvedValueOnce(json({ requestToken: 'request-bound-token' })))
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
+  expect(submit).toHaveBeenCalledOnce()
+  const form = document.querySelector('form')!
+  expect(form.method).toBe('post')
+  expect(form.getAttribute('action')).toBe('/api/auth/preview/logout')
+  expect(form.querySelector('input')?.value).toBe('request-bound-token')
+  form.remove()
   expect(screen.queryByText('12,34 zł')).toBeNull()
 })
 
-it('keeps invalid credentials on login and never requests private data', async () => {
-  const fetchMock = vi.fn().mockResolvedValueOnce(json({}, 401))
-  vi.stubGlobal('fetch', fetchMock)
+it('replaces rejected spending with an ended-session recovery action', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({}, 401)))
   render(<App />)
-  await enterCredentials()
-  expect((await screen.findByRole('alert')).textContent).toContain('email or password is incorrect')
-  expect(location.pathname).toBe('/login')
-  expect(fetchMock).toHaveBeenCalledTimes(1)
+  await screen.findByRole('heading', { name: 'Your session has ended.' })
+  expect(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')).toBe('/api/auth/preview/start?returnUrl=%2F&mode=login')
+  expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
 })
 
-it('offers retry for an unavailable total and sends rejected sessions back to login', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-    .mockResolvedValueOnce(json({}, 500)).mockResolvedValueOnce(json({}, 401)))
+it('offers retry for an unavailable daily total', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({}, 503)).mockResolvedValue(json(total('0'))))
   render(<App />)
-  const user = await enterCredentials()
-  await user.click(await screen.findByRole('button', { name: 'Try again' }))
-  await screen.findByText(/Your session has ended/)
-  expect(location.pathname).toBe('/login')
-  expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
+  await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }))
+  await screen.findByText('0,00 zł')
+})
+
+it('restores and periodically verifies the protected design reference', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  history.replaceState(null, '', '/design-system')
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({}, 401))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  await screen.findByRole('heading', { name: 'Your session has ended.' })
+  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
+  expect(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')).toContain('returnUrl=%2Fdesign-system')
+})
+
+it('checks the session on navigation between today and the development reference', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(json(url === '/api/auth/me' ? identity : total()))))
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Design reference' }))
+  await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
+  await user.click(screen.getByRole('button', { name: 'Back to today' }))
+  await screen.findByText('12,34 zł')
+  expect(location.pathname).toBe('/')
+})
+
+it('hides content before a page enters history and verifies again when restored', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total())).mockResolvedValueOnce(json({}, 401)))
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+  expect(screen.queryByText('12,34 zł')).toBeNull()
+  act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+  await screen.findByRole('heading', { name: 'Your session has ended.' })
+})
+
+it('ignores a late verification after logout', async () => {
+  let finish!: (response: Response) => void
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total()))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finish = resolve }))
+    .mockResolvedValueOnce(json({}, 503))
+  vi.stubGlobal('fetch', fetchMock)
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
+  await screen.findByRole('heading', { name: 'Logout is incomplete.' })
+  await act(async () => finish(json(identity)))
+  expect(screen.queryByText('12,34 zł')).toBeNull()
 })
 
 it('formats zero, a grosz and totals beyond JavaScript’s safe integer range', () => {
@@ -69,113 +144,94 @@ it('formats zero, a grosz and totals beyond JavaScript’s safe integer range', 
   expect(normalized('9223372036854775808')).toBe('92 233 720 368 547 758,08 zł')
 })
 
-it('reloads the total when a response crosses Warsaw midnight', async () => {
+it('reloads a total when the response crosses Warsaw midnight', async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
-  try {
-    vi.setSystemTime(new Date('2026-11-02T22:59:59Z'))
-    let finishYesterday!: (response: Response) => void
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-      .mockImplementationOnce(() => new Promise<Response>(resolve => { finishYesterday = resolve }))
-      .mockResolvedValueOnce(json({ purchaseDate: '2026-11-03', totalGrosz: '0' })))
-    render(<App />)
-    await enterCredentials()
-    await screen.findByText('Loading today’s spending…')
-    vi.setSystemTime(new Date('2026-11-02T23:00:01Z'))
-    finishYesterday(json({ purchaseDate: '2026-11-02', totalGrosz: '1234' }))
-    await screen.findByText('0,00 zł')
-    expect(screen.queryByText('12,34 zł')).toBeNull()
-  } finally {
-    vi.useRealTimers()
-  }
+  vi.setSystemTime(new Date('2026-11-02T22:59:59Z'))
+  let finishYesterday!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity))
+    .mockImplementationOnce(() => new Promise<Response>(resolve => { finishYesterday = resolve }))
+    .mockResolvedValueOnce(json({ purchaseDate: '2026-11-03', totalGrosz: '0' })))
+  render(<App />)
+  await screen.findByText('Loading today’s spending…')
+  vi.setSystemTime(new Date('2026-11-02T23:00:01Z'))
+  await act(async () => finishYesterday(json({ purchaseDate: '2026-11-02', totalGrosz: '1234' })))
+  await screen.findByText('0,00 zł')
+  expect(screen.queryByText('12,34 zł')).toBeNull()
 })
 
-it('keeps a signed-out design-reference visit behind login without requesting private data', () => {
-  history.replaceState(null, '', '/design-system')
+it.each([
+  ['auth.provider_unavailable', 'Login is temporarily unavailable.'],
+  ['auth.cancelled', 'Login was cancelled.'],
+  ['auth.transaction_expired', 'Your login attempt has expired.'],
+  ['auth.callback_failed', 'We couldn’t complete login.'],
+  ['untrusted-description', 'We couldn’t complete login.'],
+  ['constructor', 'We couldn’t complete login.'],
+  ['__proto__', 'We couldn’t complete login.'],
+])('presents bounded recovery for %s without automatic login loops', async (code, title) => {
+  history.replaceState(null, '', `/auth/recovery?code=${code}`)
   const fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  expect(location.pathname).toBe('/login')
-  expect(screen.getByRole('heading', { name: 'Log in' })).toBeTruthy()
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
+  expect(screen.getByRole('heading', { name: title })).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Try again' })).toBeTruthy()
   expect(fetchMock).not.toHaveBeenCalled()
+  expect(screen.queryByText('untrusted-description')).toBeNull()
 })
 
-it('returns to the reference after login only when the API verifies the session, and supports logout', async () => {
-  history.replaceState(null, '', '/design-system')
-  let verify!: (response: Response) => void
-  const fetchMock = vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-    .mockImplementationOnce(() => new Promise<Response>(resolve => { verify = resolve }))
+it('verifies logout before showing the signed-out landing page', async () => {
+  history.replaceState(null, '', '/auth/signed-out')
+  const fetchMock = vi.fn().mockResolvedValue(json({}, 401))
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  const user = await enterCredentials()
-  await screen.findByText('Checking your session…')
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
-  expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', expect.objectContaining({
-    headers: { Authorization: 'Bearer session' }, cache: 'no-store',
-  }))
-  verify(json({ id: 'owner' }))
-  await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
-  expect(location.pathname).toBe('/design-system')
-  await user.click(screen.getByRole('button', { name: 'Log out' }))
-  expect(location.pathname).toBe('/login')
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
+  await screen.findByRole('heading', { name: 'You’re logged out.' })
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
-it('rejects invalid sessions and ignores a late verification after logout', async () => {
-  history.replaceState(null, '', '/design-system')
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'rejected' }))
-    .mockResolvedValueOnce(json({}, 401)))
-  const first = render(<App />)
-  await enterCredentials()
-  await screen.findByText('Your session has ended. Log in again to open the design reference.')
-  expect(location.pathname).toBe('/login')
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
-  first.unmount()
-
-  history.replaceState(null, '', '/design-system')
-  let verify!: (response: Response) => void
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-    .mockImplementationOnce(() => new Promise<Response>(resolve => { verify = resolve })))
+it('keeps expired recovery usable after history restoration', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({}, 401)))
   render(<App />)
-  const user = await enterCredentials()
-  await screen.findByText('Checking your session…')
-  await user.click(screen.getByRole('button', { name: 'Log out' }))
-  verify(json({ id: 'owner' }))
-  await screen.findByRole('heading', { name: 'Log in' })
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
+  await screen.findByRole('heading', { name: 'Your session has ended.' })
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+  act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+  expect(screen.getByRole('link', { name: 'Log in' })).toBeTruthy()
+  expect(screen.queryByText('Checking your session…')).toBeNull()
 })
 
-it('fails closed on session-check errors, permits retry, and returns to today without losing the session', async () => {
-  history.replaceState(null, '', '/design-system')
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-    .mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(json({ id: 'owner' }))
-    .mockResolvedValueOnce(json({ purchaseDate: '2026-11-02', totalGrosz: '0' })))
-  render(<App />)
-  const user = await enterCredentials()
-  await screen.findByText('We couldn’t verify your session. Check your connection and try again.')
-  expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
-  await user.click(screen.getByRole('button', { name: 'Try again' }))
-  await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
-  await user.click(screen.getByRole('button', { name: 'Back to today' }))
-  await screen.findByRole('heading', { name: 'Today’s spending' })
-  expect(location.pathname).toBe('/')
-  expect(screen.getByRole('button', { name: 'Design reference' })).toBeTruthy()
-})
-
-it('removes reference access when a periodic session check rejects the token', async () => {
+it('does not let periodic verification restore spending after failed logout', async () => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
-  try {
-    history.replaceState(null, '', '/design-system')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json({ accessToken: 'session' }))
-      .mockResolvedValueOnce(json({ id: 'owner' })).mockResolvedValueOnce(json({}, 401)))
-    render(<App />)
-    await enterCredentials()
-    await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
-    await vi.advanceTimersByTimeAsync(60_000)
-    await screen.findByRole('heading', { name: 'Log in' })
-    expect(screen.queryByText('DESIGN REFERENCE · DEVELOPMENT ONLY')).toBeNull()
-    expect(location.pathname).toBe('/login')
-  } finally {
-    vi.useRealTimers()
-  }
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total()))
+    .mockResolvedValueOnce(json({}, 503)).mockResolvedValue(json(identity))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await screen.findByText('12,34 zł')
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
+  await screen.findByRole('heading', { name: 'Logout is incomplete.' })
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+  act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(screen.getByRole('button', { name: 'Try logout again' })).toBeTruthy()
+  expect(fetchMock).toHaveBeenCalledTimes(3)
+})
+
+it('never claims logout succeeded when directly opening the landing URL with a valid session', async () => {
+  history.replaceState(null, '', '/auth/signed-out')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(identity)))
+  render(<App />)
+  await screen.findByRole('heading', { name: 'Logout is incomplete.' })
+  expect(screen.queryByText('You’re logged out.')).toBeNull()
+  expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
+})
+
+it('restores retry after navigating Back from a public logout-recovery attempt', async () => {
+  history.replaceState(null, '', '/auth/recovery?code=auth.logout_incomplete')
+  const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {})
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ requestToken: 'request-bound-token' })))
+  render(<App />)
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Try logout again' }))
+  expect(submit).toHaveBeenCalledOnce()
+  expect(screen.getByRole('heading', { name: 'Logging out…' })).toBeTruthy()
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+  act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+  expect(screen.getByRole('button', { name: 'Try logout again' })).toBeTruthy()
+  document.querySelector('form')?.remove()
 })

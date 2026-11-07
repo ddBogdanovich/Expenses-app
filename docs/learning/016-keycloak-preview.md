@@ -65,3 +65,7 @@ Source review found no remaining must-fix findings. Required frontend/tooling/fo
 Phase 1 behavior above remains historical evidence. [Learning note 017](017-registration-policy-and-concurrent-identity.md) records implemented registration policy, the provider build prerequisite, non-destructive retained-realm upgrades, and concurrency verification. Run `npm run build:keycloak-provider` alongside the existing theme build before starting current Aspire or E2E resources. Hosted registration parity and confirmation are still Phase 3; preview design-reference access and cutover remain later phases.
 
 Phase 3 continuation: [learning note 018](018-hosted-authentication-experience.md) records the delivered hosted forms, trusted confirmation, visual review, and its owner-approved narrow provider support. The Phase 1 boundaries and evidence above remain historical.
+
+## Phase 5 update
+
+The implementation details above record the original milestone. [Learning note 021](021-default-browser-session.md) describes the current browser: hosted Keycloak entry, cookie-session restoration in `App`, protected reference access, recovery and logout. Legacy frontend credential forms and token state are removed; legacy backend retirement remains Phase 6. Preserve the historical verification evidence above.

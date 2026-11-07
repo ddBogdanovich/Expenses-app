@@ -54,3 +54,7 @@ PostgreSQL session reads and a small ticket-store implementation are additional 
 ## Phase 2 supplement
 
 [ADR 0015](0015-keycloak-registration-policy.md) adds the provider registration policy and non-destructive flow/profile/policy reconciliation. The URL-only configuration scope above describes the original Phase 1 implementation; Phase 2 expands that owned scope while preserving users, credentials, client secrets, and built-in flows.
+
+## Phase 5 supplement
+
+[ADR 0019](0019-default-browser-session.md) supersedes the browser preview/default split and the reference’s bearer-session gate. HTML document failures now navigate to bounded recovery; API JSON/status contracts and identity/session security remain. Historical rationale above is retained.
