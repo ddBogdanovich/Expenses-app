@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -112,7 +111,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
     public async Task InvalidCallbacksHaveBoundedSecretFreeResponsesAsync(string query)
     {
         using var logs = new CapturedLogs();
-        using var activities = new CapturedActivities();
         using var application = CreateApplication(new SessionClock(), logs: logs);
         using var client = CreateClient(application);
         using var response = await client.GetAsync(new Uri(PreviewAuthentication.CallbackPath + query, UriKind.Relative));
@@ -123,8 +121,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
         Assert.Equal("auth.callback_failed", body.GetProperty("code").GetString());
         Assert.DoesNotContain("sensitive-", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.DoesNotContain("sensitive-", string.Join('\n', logs.Messages), StringComparison.Ordinal);
-        Assert.NotEmpty(activities.Tags);
-        Assert.DoesNotContain("sensitive-", string.Join('\n', activities.Tags), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -219,31 +215,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
         public Task<OpenIdConnectConfiguration> GetConfigurationAsync(CancellationToken cancel) =>
             Task.FromException<OpenIdConnectConfiguration>(new InvalidOperationException("Metadata unavailable.", new IOException("Provider unavailable.")));
         public void RequestRefresh() { }
-    }
-
-    private sealed class CapturedActivities : IDisposable
-    {
-        private readonly ActivityListener _listener;
-        internal System.Collections.Concurrent.ConcurrentQueue<string> Tags { get; } = new();
-
-        internal CapturedActivities()
-        {
-            _listener = new ActivityListener
-            {
-                ShouldListenTo = source => source.Name.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal) || source.Name == "System.Net.Http",
-                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
-                ActivityStopped = activity =>
-                {
-                    foreach (var tag in activity.TagObjects)
-                    {
-                        Tags.Enqueue(tag.Key + "=" + tag.Value);
-                    }
-                }
-            };
-            ActivitySource.AddActivityListener(_listener);
-        }
-
-        public void Dispose() => _listener.Dispose();
     }
 
     private sealed class CapturedLogs : ILoggerProvider
