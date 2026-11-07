@@ -127,7 +127,7 @@ function frontend(root, output, install) {
     const locked = json(join(web, 'package-lock.json')).packages
     const installed = Object.entries(locked).filter(([path]) => path && existsSync(join(web, path, 'package.json')))
       .map(([path]) => [path, json(join(web, path, 'package.json')).version])
-    npm(['install', '--no-save', '--package-lock=false', '--ignore-scripts', `@vitest/coverage-v8@${version}`], web)
+    npm(['install', '--no-save', '--ignore-scripts', `@vitest/coverage-v8@${version}`], web)
     if (installed.some(([path, previous]) => !existsSync(join(web, path, 'package.json')) || json(join(web, path, 'package.json')).version !== previous)) {
       throw new Error('Coverage bootstrap changed a locked baseline dependency; comparison is not reproducible.')
     }
