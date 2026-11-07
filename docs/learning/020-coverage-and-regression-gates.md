@@ -6,19 +6,19 @@ A passing test proves its assertions held. **Line coverage** counts executable s
 
 PocketLedger uses Coverlet with its existing xUnit/VSTest suites, ReportGenerator to merge/read backend results, and Vitest's V8 provider for React/TypeScript. See [ADR 0018](../decisions/0018-coverage-regression-gate.md).
 
-The first full measurements at baseline `59929726e1394d4a29eb3b7a63412bc58b339c2e` are:
+The final full measurements are:
 
 | Area | Covered / executable lines | Line coverage | Covered / executable branches | Branch coverage |
 | --- | ---: | ---: | ---: | ---: |
 | Domain | 102 / 108 | 94.44% | 30 / 32 | 93.75% |
-| UseCases | 264 / 303 | 87.13% | 98 / 129 | 75.97% |
+| UseCases | 264 / 303 | 87.13% | 99 / 129 | 76.74% |
 | Infrastructure | 421 / 507 | 83.04% | 79 / 128 | 61.72% |
 | Api | 25 / 28 | 89.29% | 6 / 8 | 75.00% |
 | ServiceDefaults | 57 / 67 | 85.07% | 15 / 18 | 83.33% |
-| Backend combined | 869 / 1013 | 85.78% | 228 / 315 | 72.38% |
+| Backend combined | 869 / 1013 | 85.78% | 229 / 315 | 72.70% |
 | Web | 236 / 263 | 89.73% | 232 / 275 | 84.36% |
 
-Backend results merge all three suites, including 84 PostgreSQL API tests, without double-counting Domain lines reached by several suites. The baseline run has 109 backend and 28 frontend behavior tests. Two deterministic recovery tests added during gate validation bring the backend suite to 111; final UseCases branch coverage is 99/129 (76.74%) and combined backend branch coverage is 229/315 (72.70%). Frontend reports include unimported code (`main.tsx`) and development pages. Generated EF migration code and test/type-declaration files are excluded. These percentages do not include AppHost orchestration, root tooling, Java provider code, hosted theme JavaScript, or backend/frontend execution inside the separate Keycloak E2E suite. Those areas retain their existing build and acceptance checks.
+Backend results merge precise OpenCover branch identities from all three suites, including 84 PostgreSQL API tests, without double-counting Domain lines reached by several suites. The run has 111 backend tests (22 Domain, 5 UseCases, 84 API) and 28 frontend behavior tests. The original comparison baseline is `59929726e1394d4a29eb3b7a63412bc58b339c2e`. Frontend reports include unimported code (`main.tsx`) and development pages. Generated EF migration code and test/type-declaration files are excluded. These percentages do not include AppHost orchestration, root tooling, Java provider code, hosted theme JavaScript, or backend/frontend execution inside the separate Keycloak E2E suite. Those areas retain their existing build and acceptance checks.
 
 ## Collect and inspect
 
@@ -51,6 +51,7 @@ CI compares GitHub’s tested PR merge candidate (`github.sha`) against the even
 
 - The identical committed baseline/head comparison passed all twelve module/metric checks using real collectors, including automatic bootstrap of the pre-coverage main revision.
 - A disposable repository retained baseline source but removed `App.test.tsx` in a candidate commit. Real V8 coverage fell from **236/263 (89.73%)** to **163/263 (61.98%)** lines, and **232/275 (84.36%)** to **154/275 (56.00%)** branches. The gate rejected it and retained reports. The working project's tests/history were not altered.
+- A pinned ReportGenerator contract merges complementary OpenCover paths into **1/1 lines and 2/2 branches**; repeated identical input stays **1/1 lines and 1/2 branches**. Cobertura per-condition percentages cannot distinguish opposite paths from different suites, so it remains an output/interchange format rather than the merge input.
 - Tooling regressions cover equality/improvement, uncovered new code, tiny fractional decreases, large counters, per-module branch regression, zero denominators, invalid/partial/duplicate reports, changed scopes, every pushed ref/deletion, missing/failing baseline fetch, exact committed snapshots despite staged/unstaged/untracked files, failure reports, cleanup, and successful-then-failed reruns without stale passing artifacts.
 - The installed hook initially rejected baseline bootstrap because an install option ignored the lockfile and changed existing dependency versions. Honoring the original lockfile fixed setup; the version-preservation guard remains in place. The real feature-versus-main frontend comparison then passed with unchanged counters.
 - PR CI detected timing-dependent recovery coverage in `ResolveExternalAccountHandler`: the real concurrent integration requests sometimes all observed an existing winner and skipped losing-insert recovery. Two deterministic use-case tests now exercise winner recovery and missing-winner rejection through the repository port; real PostgreSQL uniqueness/concurrency tests remain. The gate keeps exact comparison with no tolerance or retry-to-green.
