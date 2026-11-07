@@ -49,3 +49,7 @@ The default browser JWT flow stays intact. This phase changes no React or hosted
 1. Explain why a successful “find nothing” query does not make a later insert safe. Which invariant does the database protect?
 2. Change only an existing identity's email in a test. Why must its local GUID remain unchanged? Why must the same email on another issuer not find that GUID?
 3. Why does importing a current realm prove less than upgrading a retained Phase 1 fixture? Which kinds of state must reconciliation preserve?
+
+## Phase 3 continuation
+
+[Learning note 018](018-hosted-authentication-experience.md) records the delivered hosted forms, verified creation confirmation, error recovery, and review evidence. Phase 2 descriptions above remain historical; identity/credential policy and ownership invariants remain unchanged.

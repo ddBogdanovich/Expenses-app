@@ -10,7 +10,10 @@ const flows = template.authenticationFlows
 const executions = [{ id: 'form', displayName: flows[1].alias, requirement: 'REQUIRED' },
   ...flows[1].authenticationExecutions.map((entry, index) => ({ id: `action-${index}`, providerId: entry.authenticator, requirement: 'REQUIRED' }))]
 
-async function fixture(t, initialClient, authenticated = true) {
+const confirmation = { alias: 'pocketledger-registration-confirmation', providerId: 'pocketledger-registration-confirmation',
+  name: 'PocketLedger registration confirmation', enabled: true, defaultAction: false, priority: 0 }
+
+async function fixture(t, initialClient, authenticated = true, requiredActions = [confirmation]) {
   const writes = []
   const requests = []
   const server = createServer(async (request, response) => {
@@ -20,6 +23,7 @@ async function fixture(t, initialClient, authenticated = true) {
       response.writeHead(authenticated ? 200 : 401).end(JSON.stringify({ access_token: 'fixture-token' }))
     } else if (request.method === 'GET') {
       const result = request.url.endsWith('/authentication/flows') ? flows.filter(flow => flow.topLevel)
+        : request.url.endsWith('/authentication/required-actions') ? requiredActions
         : request.url.endsWith('/executions') ? executions
         : request.url.endsWith('/users/profile') ? profile
         : request.url.endsWith('/realms/pocketledger') ? template : [initialClient]
@@ -45,6 +49,7 @@ async function fixture(t, initialClient, authenticated = true) {
 const current = {
   standardFlowEnabled: true, implicitFlowEnabled: false, directAccessGrantsEnabled: false, serviceAccountsEnabled: false,
   id: 'ledger-client', secret: 'existing-secret', otherSetting: 'keep',
+  baseUrl: 'http://localhost:5173/api/auth/preview/start',
   redirectUris: ['http://localhost:5173/api/auth/preview/callback'],
   attributes: { 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': 'http://localhost:5173/api/auth/preview/signed-out', otherAttribute: 'keep' },
 }
@@ -74,4 +79,17 @@ test('preview cannot retain a password grant or lose PKCE through configuration 
   const result = await fixture(t, { ...current, directAccessGrantsEnabled: true, attributes: { ...current.attributes, 'pkce.code.challenge.method': 'plain' } })
   assert.equal(result.code, 0)
   assert.deepEqual(result.writes, [current])
+})
+
+test('registration confirmation is added without changing built-in required actions or accounts', async t => {
+  const result = await fixture(t, current, true, [{ alias: 'UPDATE_PASSWORD', enabled: true }])
+  assert.equal(result.code, 0)
+  assert.deepEqual(result.writes, [{ providerId: confirmation.providerId, name: confirmation.name }, confirmation])
+  assert.ok(result.requests.every(path => !/\/users(?:\?|$|\/(?!profile))/.test(path)))
+})
+
+test('registration confirmation cannot become a default action for returning users', async t => {
+  const result = await fixture(t, current, true, [{ ...confirmation, defaultAction: true }])
+  assert.equal(result.code, 0)
+  assert.deepEqual(result.writes, [confirmation])
 })

@@ -68,23 +68,25 @@ Criteria C1–C19 below refer to the PRD's Definition of done checkboxes in thei
 ### Phase 3: Preserve the full hosted login and registration experience
 
 **Goal:** Make the preview's login, registration, and confirmation match the current product's appearance and interactions.
-**Layers:** fe
+**Layers:** fe, plus owner-approved narrow provider/configuration support for trusted confirmation (ADR 0016)
 **Depends on:** Phase 2
 **Covers:** C3, C5–C6, C14–C16, C19.
 **Test-first gate:** Before editing hosted forms/theme or confirmation UI, add browser E2E cases for login/register switching, email/password-only registration, confirmed account creation and continuation, duplicate/invalid input, generic login errors, password visibility, autocomplete/paste, pending/repeated submission, keyboard focus, and the responsive layout contract. Run against Phase 2 and record missing UI behavior. Compare to the reviewed original design; require explicit visual review of screenshot differences rather than automatically accepting the provider's current appearance as the new baseline.
 **Tasks:**
 
-- [ ] Complete the Keycloak theme using the Phase 1 tooling and the existing `AccountPage.tsx`, `Brand.tsx`, `styles/tokens.css`, and `index.css` as the design baseline. Preserve the desktop introduction, compact form-first policy, light/system-font theme, footer, shared mark, and safe-area behavior without a separately maintained palette.
-- [ ] Adapt hosted email/password forms and login/registration links to Keycloak actions while retaining password visibility, accessible labels/errors, paste/autocomplete, pending feedback, duplicate-submit protection, and entered non-secret values on recoverable failures.
-- [ ] Preserve the “You’re all set.” confirmation with the authenticated email and “View today’s spending” continuation. Ensure the confirmation follows verified successful registration, not a spoofable browser flag; do not add a second credential prompt or new profile fields.
-- [ ] Rerun the test-first E2E/behavior coverage for invalid login, duplicate/invalid registration, success continuation, field editing, pending submissions, and password visibility to green, including earlier-phase regressions. Compare before/after screenshots through Playwright MCP at the full documented viewport/text matrix, complete the UI/UX review, fix findings, and rerun affected checks; record red/green evidence.
-- [ ] Run frontend build/lint/tests and theme-specific build/checks required by the selected tooling. Update `docs/design/README.md`, applicable examples, frontend instructions, and the focused authentication/UI learning note to describe both application and hosted-page responsibilities.
+- [x] Complete the Keycloak theme using the Phase 1 tooling and the existing `AccountPage.tsx`, `Brand.tsx`, `styles/tokens.css`, and `index.css` as the design baseline. Preserve the desktop introduction, compact form-first policy, light/system-font theme, footer, shared mark, and safe-area behavior without a separately maintained palette.
+- [x] Adapt hosted email/password forms and login/registration links to Keycloak actions while retaining password visibility, accessible labels/errors, paste/autocomplete, pending feedback, duplicate-submit protection, and entered non-secret values on recoverable failures.
+- [x] Preserve the “You’re all set.” confirmation with the authenticated email and “View today’s spending” continuation. Ensure the confirmation follows verified successful registration, not a spoofable browser flag; do not add a second credential prompt or new profile fields.
+- [x] Rerun the test-first E2E/behavior coverage for invalid login, duplicate/invalid registration, success continuation, field editing, pending submissions, and password visibility to green, including earlier-phase regressions. Compare before/after screenshots through Playwright MCP at the full documented viewport/text matrix, complete the UI/UX review, fix findings, and rerun affected checks; record red/green evidence.
+- [x] Run frontend build/lint/tests and theme-specific build/checks required by the selected tooling. Update `docs/design/README.md`, applicable examples, frontend instructions, and the focused authentication/UI learning note to describe both application and hosted-page responsibilities.
 
 **Definition of done:**
 
-- [ ] A new preview user registers using email/password only, sees the preserved confirmation, and opens today's spending; returning login and duplicate registration have correct success/error outcomes.
-- [ ] Final screenshots and interaction checks show no unresolved differences in the required brand, layout, hierarchy, responsive behavior, or accessibility. Unknown email and wrong password produce the same login failure message.
-- [ ] The completed preview and the existing default flow both remain usable; frontend/theme checks pass.
+- [x] A new preview user registers using email/password only, sees the preserved confirmation, and opens today's spending; returning login and duplicate registration have correct success/error outcomes.
+- [x] Final screenshots and interaction checks show no unresolved differences in the required brand, layout, hierarchy, responsive behavior, or accessibility. Unknown email and wrong password produce the same login failure message.
+- [x] The completed preview and the existing default flow both remain usable; frontend/theme checks pass.
+
+**Evidence:** [Learning note 018](learning/018-hosted-authentication-experience.md) and [ADR 0016](decisions/0016-hosted-registration-confirmation.md). Narrow provider/configuration support was explicitly approved by the owner; default cutover and broad failure hardening remain later phases.
 
 ### Phase 4: Complete backend session and callback failure handling
 

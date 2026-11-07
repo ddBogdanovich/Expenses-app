@@ -22,11 +22,20 @@ async function registration(page: Page) {
 }
 
 async function submit(page: Page, email: string, password: string) {
+  // Policy acceptance bypasses client constraints so the provider remains the authority.
+  await page.locator('#kc-register-form').evaluate(form => { form.noValidate = true })
+  await page.locator('#password').evaluate(input => { input.removeAttribute('maxlength') })
   // Text input permits whitespace: browser email validation must not hide provider behavior.
   await page.locator('#email').evaluate(element => element.setAttribute('type', 'text'))
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await page.locator('#kc-register-form [type=submit]').click()
+}
+
+async function continueRegistration(page: Page) {
+  await expect(page.getByRole('heading', { name: 'You’re all set.' })).toBeVisible()
+  await page.getByRole('button', { name: 'View today’s spending' }).click()
+  await expect(page).toHaveURL(/\/preview$/)
 }
 
 async function login(page: Page, email: string, password: string) {
@@ -41,7 +50,7 @@ for (const length of [11, 12, 128, 129]) {
     await registration(page)
     await submit(page, `boundary-${randomUUID()}@example.com`, 'a'.repeat(length))
     if (length === 12 || length === 128) {
-      await expect(page).toHaveURL(/\/preview$/)
+      await continueRegistration(page)
       expect((await context.request.get('/api/auth/me', { headers })).status()).toBe(200)
     } else {
       await expect(page.locator('#kc-register-form')).toBeVisible()
@@ -60,7 +69,7 @@ test('trimmed case-insensitive duplicate registration preserves the original pas
     const first = await owner.newPage()
     await registration(first)
     await submit(first, `  ${email.toUpperCase()}  `, password)
-    await expect(first).toHaveURL(/\/preview$/)
+    await continueRegistration(first)
     const identity = await (await owner.request.get('/api/auth/me', { headers })).json()
     const second = await duplicate.newPage()
     await registration(second)
@@ -90,6 +99,12 @@ test('concurrent normalized registrations create one identity and retain the win
     const passwords = [`First-${randomUUID()}`, `Second-${randomUUID()}`]
     await Promise.all(pages.map(page => registration(page)))
     await Promise.all(pages.map((page, index) => submit(page, index === 0 ? email : ` ${email.toUpperCase()} `, passwords[index])))
+    // The winner sees trusted confirmation before the local session is issued.
+    await expect.poll(async () => (await Promise.all(pages.map(page =>
+      page.getByRole('heading', { name: 'You’re all set.' }).count()))).reduce((sum, count) => sum + count, 0)).toBe(1)
+    for (const page of pages) {
+      if (await page.getByRole('heading', { name: 'You’re all set.' }).count()) await continueRegistration(page)
+    }
     await expect.poll(async () => (await Promise.all(contexts.map(async context =>
       (await context.request.get('/api/auth/me', { headers })).status()))).sort()).toEqual([200, 401])
     const statuses = await Promise.all(contexts.map(async context => (await context.request.get('/api/auth/me', { headers })).status()))
@@ -118,7 +133,7 @@ test('two registered preview owners cannot read, replace, delete, or total each 
       const page = await context.newPage()
       await registration(page)
       await submit(page, `owner-${randomUUID()}@example.com`, `Owner-${randomUUID()}`)
-      await expect(page).toHaveURL(/\/preview$/)
+      await continueRegistration(page)
     }))
     const csrf = await Promise.all(contexts.map(async context => (await context.request.get('/api/auth/preview/antiforgery')).json()))
     const auth = csrf.map(token => ({ ...headers, 'X-CSRF-TOKEN': token.requestToken }))

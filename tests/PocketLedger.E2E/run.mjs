@@ -112,11 +112,11 @@ try {
   await ready(baseURL, web)
   const controlToken = randomBytes(32).toString('hex')
   controlServer = createHttpServer(async (request, response) => {
-    if (request.method !== 'POST' || !['/restart-api', '/identity-count'].includes(request.url) || request.headers['x-e2e-control'] !== controlToken) {
+    if (request.method !== 'POST' || !['/restart-api', '/identity-count', '/require-confirmation'].includes(request.url) || request.headers['x-e2e-control'] !== controlToken) {
       response.writeHead(404).end(); return
     }
     try {
-      if (request.url === '/identity-count') {
+      if (request.url === '/identity-count' || request.url === '/require-confirmation') {
         let body = ''
         for await (const chunk of request) body += chunk
         const { email } = JSON.parse(body)
@@ -130,7 +130,21 @@ try {
           headers: { Authorization: `Bearer ${access_token}` },
         })
         if (!users.ok) throw new Error('Test identity lookup failed.')
-        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ count: (await users.json()).length }))
+        const identities = await users.json()
+        if (request.url === '/require-confirmation') {
+          // Negative acceptance only: a real, already-created disposable account
+          // has no registration transaction note, even if assigned this action.
+          if (identities.length !== 1) throw new Error('Expected one test identity.')
+          const identity = identities[0]
+          const updated = await fetch(`${keycloakURL}/admin/realms/pocketledger/users/${encodeURIComponent(identity.id)}`, {
+            method: 'PUT', headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requiredActions: [...(identity.requiredActions ?? []), 'pocketledger-registration-confirmation'] }),
+          })
+          if (!updated.ok) throw new Error('Test required-action assignment failed.')
+          response.writeHead(204).end()
+          return
+        }
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ count: identities.length }))
         return
       }
       const exited = new Promise(resolve => api.once('exit', resolve))
