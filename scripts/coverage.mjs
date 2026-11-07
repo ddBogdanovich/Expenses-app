@@ -137,7 +137,7 @@ function frontend(root, output, install) {
   try {
     const configuration = join(temporary, 'vitest.config.ts')
     // Identical scope/reporting policy for both revisions; preserve the revision's test/plugin setup.
-    writeFileSync(configuration, `import original from '../vitest.config'\nexport default { ...original, test: { ...original.test, coverage: ${JSON.stringify({ ...frontendPolicy, enabled: true, reportsDirectory: join(output, 'frontend') })} } }\n`)
+    writeFileSync(configuration, `import original from '../vitest.config.ts'\nexport default { ...original, test: { ...original.test, coverage: ${JSON.stringify({ ...frontendPolicy, enabled: true, reportsDirectory: join(output, 'frontend') })} } }\n`)
     run(process.execPath, [join(web, 'node_modules/vitest/vitest.mjs'), 'run', '--config', configuration], web)
   } finally { rmSync(temporary, { recursive: true, force: true }) }
   return frontendMetrics(json(join(output, 'frontend/coverage-summary.json')))
