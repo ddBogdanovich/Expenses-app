@@ -69,16 +69,29 @@ const policyFields = ['registrationAllowed', 'registrationEmailAsUsername', 'log
 const realm = await admin('')
 const policy = Object.fromEntries(policyFields.map(field => [field, template[field]]))
 if (policyFields.some(field => realm[field] !== policy[field])) await admin('', 'PUT', policy)
+// Register only the owned presentation step. Do not replace built-in actions or users.
+const confirmationId = 'pocketledger-registration-confirmation'
+const confirmation = { alias: confirmationId, providerId: confirmationId,
+  name: 'PocketLedger registration confirmation', enabled: true, defaultAction: false, priority: 0 }
+const actions = await admin('/authentication/required-actions')
+const existingConfirmation = actions.find(action => action.alias === confirmationId)
+if (!existingConfirmation) {
+  await admin('/authentication/register-required-action', 'POST', { providerId: confirmationId, name: confirmation.name })
+}
+if (!existingConfirmation || !matchesOwnedFields(existingConfirmation, confirmation)) {
+  await admin(`/authentication/required-actions/${confirmationId}`, 'PUT', { ...existingConfirmation, ...confirmation })
+}
 const clients = await admin('/clients?clientId=pocketledger-web')
 if (clients.length !== 1) throw new Error('Expected exactly one PocketLedger browser client.')
 const client = clients[0]
 const redirectUris = [`${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/callback`]
 const postLogout = `${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/signed-out`
+const baseUrl = `${POCKETLEDGER_WEB_ORIGIN}/api/auth/preview/start`
 const clientPolicy = { standardFlowEnabled: true, implicitFlowEnabled: false, directAccessGrantsEnabled: false, serviceAccountsEnabled: false }
-if (JSON.stringify(client.redirectUris) !== JSON.stringify(redirectUris) || client.attributes?.['post.logout.redirect.uris'] !== postLogout ||
+if (client.baseUrl !== baseUrl || JSON.stringify(client.redirectUris) !== JSON.stringify(redirectUris) || client.attributes?.['post.logout.redirect.uris'] !== postLogout ||
     Object.keys(clientPolicy).some(field => client[field] !== clientPolicy[field]) || client.attributes?.['pkce.code.challenge.method'] !== 'S256') {
   await admin(`/clients/${encodeURIComponent(client.id)}`, 'PUT', {
-    ...client, ...clientPolicy, redirectUris,
+    ...client, ...clientPolicy, redirectUris, baseUrl,
     attributes: { ...client.attributes, 'pkce.code.challenge.method': 'S256', 'post.logout.redirect.uris': postLogout },
   })
 }

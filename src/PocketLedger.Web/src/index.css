@@ -8,7 +8,7 @@ button, input { font: inherit; }
 button, a { touch-action: manipulation; }
 button { white-space: normal; }
 :is(button, a, input):focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
-main:focus, .today-main h1:focus { outline: none; }
+main:focus, .today-main h1:focus, .account-card h1:focus, .account-card [data-form-error]:focus { outline: none; }
 .button { min-height: var(--touch-target); min-width: var(--touch-target); height: auto; padding-block: var(--space-3); border-radius: var(--radius-control); font-size: var(--text-body); white-space: normal; transition: background-color var(--motion-feedback) var(--motion-ease); }
 .button:active, .button[data-pressed="true"] { transform: none; }
 .button[data-focus-visible="true"] { outline: var(--focus-width) solid var(--focus); outline-offset: var(--focus-offset); }
