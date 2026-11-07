@@ -1,5 +1,8 @@
 # Learning note 008: Expense aggregates and ownership
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## Entity and aggregate root
 
 An entity has identity through time. Correcting Lunch from 3500 grosz to 4000 grosz changes the same Expense; it does not create a new purchase. An aggregate is the boundary saved consistently as a unit. Expense is both: a root containing one entity and Money, with no child entities yet. Aggregate does not mean a collection.

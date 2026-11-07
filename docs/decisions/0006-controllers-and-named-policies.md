@@ -21,3 +21,7 @@ Define fixed numeric rules using named constants or typed policy values in their
 MVC adds framework conventions, action discovery, model binding, and action results, while keeping each feature discoverable in one folder. Controllers remain HTTP adapters; domain aggregates and repository contracts retain their existing dependencies. More attributes and MVC setup replace the smaller minimal API endpoint modules, reflecting the owner's preference.
 
 Named policies make intent visible and reduce inconsistent validation/error text without adding runtime configurability that is not needed. This is a repository-wide authoring and review rule recorded in AGENTS.md. It is deliberately not a blanket analyzer ban on every numeral: zeros, generated migrations, version identifiers, and independent boundary-test cases have useful literal meanings.
+
+## Phase 6 example update
+
+The controller/vertical-slice and named-value decisions remain accepted. [ADR 0020](0020-keycloak-credential-retirement.md) retires the historical `PasswordPolicy`, `JwtSettings`, hash-column and signing-key examples above. Current examples are expense controllers/handlers, `PreviewSettings` session durations, domain identity storage bounds and the AppHost’s named provider-secret length. Keycloak owns credential policy.

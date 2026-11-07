@@ -1,5 +1,8 @@
 # Learning note 011: Registration from browser to API
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## Components and state
 
 `src/PocketLedger.Web/src/features/authentication/AccountPage.tsx` composes HeroUI form controls. A `TextField` connects its label, input, help text, and validation error for assistive technology. `useState` holds entered values and visible submission state. A ref blocks repeated submissions immediately, before a render updates the button. The password can be revealed through a keyboard-accessible button and uses `new-password` autocomplete.

@@ -1,6 +1,6 @@
 # ADR 0010: Registration through a same-origin API path
 
-- Status: Accepted
+- Status: Registration/session design superseded by [ADR 0016](0016-hosted-registration-confirmation.md), [ADR 0019](0019-default-browser-session.md), and [ADR 0020](0020-keycloak-credential-retirement.md); Vite proxy composition remains current.
 - Date: 2026-11-01
 
 ## Context
@@ -18,3 +18,7 @@ Hold the returned token in React memory and clear the password on success. Displ
 ## Consequences
 
 The browser requires no CORS configuration and the API keeps its current contract. A direct cross-origin client was an alternative, but would require allowed-origin configuration and a public API URL. Memory avoids persistent token storage but does not survive refresh. The duplicated password bounds need contract review when backend rules change. Vitest and Testing Library exercise interactive outcomes; real API verification still requires Aspire and Docker.
+
+## Supersession
+
+Hosted Keycloak registration/confirmation and default cookie sessions replace the JSON credential form and in-memory token design above. Phase 6 retires its backend credential endpoints and verifier/key storage. The same-origin Vite `/api` proxy remains; earlier rationale and evidence are historical.

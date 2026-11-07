@@ -35,3 +35,7 @@ No migrations, volume changes, account linking, data reset, AppHost wiring chang
 ## Verification
 
 See [learning note 021](../learning/021-default-browser-session.md) for the test-first baseline, retained real-service journeys, checks, visual review and remaining physical-device limits.
+
+## Phase 6 supersession
+
+[ADR 0020](0020-keycloak-credential-retirement.md) supersedes first-party credential storage/endpoints/JWT services and signing-key configuration, the dual-authentication selector, and the legacy-only email index. The default cookie path retains existing scheme/callback/cookie names. Legacy owner/expense rows remain inaccessible historical data. Earlier decisions and verification above retain their historical rationale.

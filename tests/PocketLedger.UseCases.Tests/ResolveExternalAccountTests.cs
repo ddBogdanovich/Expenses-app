@@ -41,9 +41,6 @@ public sealed class ResolveExternalAccountTests
 
         internal UserAccount? AttemptedAccount { get; private set; }
 
-        public Task<UserAccount?> FindByEmailAsync(EmailAddress email, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException("External identities must not be linked by email.");
-
         public Task<UserAccount?> FindByExternalIdentityAsync(ExternalIdentity identity, CancellationToken cancellationToken)
         {
             Assert.Equal(expectedIdentity, identity);

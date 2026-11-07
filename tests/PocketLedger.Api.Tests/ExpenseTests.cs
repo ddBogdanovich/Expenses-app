@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -236,7 +235,7 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
 
         using var restarted = database.CreateApplication();
         using var reader = restarted.CreateClient();
-        reader.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        reader.DefaultRequestHeaders.Add("Cookie", token);
         using var response = await reader.GetAsync(new Uri($"/api/expenses/{id}", UriKind.Relative)).ConfigureAwait(true);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         AssertExpense(await ReadAsync(response).ConfigureAwait(true), 3500, "Food", "Lunch", true);
@@ -307,15 +306,14 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
 
     private static async Task<string> AuthenticateAsync(HttpClient client)
     {
-        using var response = await client.PostAsJsonAsync("/api/auth/register", new
-        {
-            email = $"expense-{Guid.NewGuid():N}@example.com",
-            password = "Study-project!42",
-        }).ConfigureAwait(true);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var token = (await ReadAsync(response).ConfigureAwait(true)).GetProperty("accessToken").GetString()!;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return token;
+        using var response = await client.GetAsync(new Uri("/test/expense-session", UriKind.Relative)).ConfigureAwait(true);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var cookie = string.Join("; ", response.Headers.GetValues("Set-Cookie").Select(value => value.Split(';')[0]));
+        using var csrf = await client.GetAsync(new Uri("/api/auth/preview/antiforgery", UriKind.Relative)).ConfigureAwait(true);
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", (await ReadAsync(csrf).ConfigureAwait(true)).GetProperty("requestToken").GetString());
+        return cookie;
     }
 
     private static async Task<Guid> CreateAsync(HttpClient client)

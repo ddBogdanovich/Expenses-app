@@ -1,5 +1,8 @@
 # Default browser sessions and recovery
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## The problem and the boundary
 
 A token held in a React state variable disappears on reload. A server-side session lets the browser present an opaque HttpOnly cookie while the API verifies a protected PostgreSQL ticket. PocketLedger already delivered this in the preview; Phase 5 uses it for all browser entry points. The cookie’s 30-minute idle/eight-hour absolute bounds remain unchanged. Closing a browser does not explicitly log out; privacy settings can still remove cookies.

@@ -23,6 +23,36 @@ namespace PocketLedger.Api.Tests;
 public sealed class PreviewSecurityTests(AuthenticationDatabase database) : IClassFixture<AuthenticationDatabase>
 {
     [Theory]
+    [InlineData("missing")]
+    [InlineData("invalid")]
+    [InlineData("empty-guid")]
+    [InlineData("foreign-scheme")]
+    public async Task SessionWithoutTrustedLocalOwnerCannotUseAnyExpenseOperationAsync(string claimKind)
+    {
+        using var application = CreateApplication(new SessionClock());
+        using var client = CreateClient(application);
+        using var signIn = await client.GetAsync(new Uri("/test/session?claim=" + claimKind, UriKind.Relative));
+        using var token = await client.GetAsync(new Uri("/api/auth/preview/antiforgery", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.OK, token.StatusCode);
+        var csrf = await token.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf.GetProperty("requestToken").GetString());
+        var id = Guid.NewGuid();
+        var routes = new[] { ("GET", "/api/auth/me"), ("GET", "/api/expenses"), ("GET", "/api/expenses/today"),
+            ("GET", $"/api/expenses/{id}"), ("POST", "/api/expenses"), ("PUT", $"/api/expenses/{id}"), ("DELETE", $"/api/expenses/{id}") };
+        foreach (var (method, route) in routes)
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(method), route);
+            if (method is "POST" or "PUT")
+            {
+                request.Content = JsonContent.Create(new { amountGrosz = 1, purchaseDate = "2026-01-01", category = "Food", qualifiesForAllowance = true });
+            }
+
+            using var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+    }
+
+    [Theory]
     [InlineData("/api/auth/me")]
     [InlineData("/api/expenses/today")]
     [InlineData("/api/auth/preview/antiforgery")]
@@ -30,7 +60,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
     {
         using var application = CreateApplication(new SessionClock());
         using var client = CreateClient(application);
-        client.DefaultRequestHeaders.Add(PreviewAuthentication.SelectorHeader, PreviewAuthentication.SelectorValue);
         using var response = await client.GetAsync(new Uri(route, UriKind.Relative));
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Null(response.Headers.Location);
@@ -45,7 +74,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
         using var client = CreateClient(application);
         using var signIn = await client.GetAsync(new Uri("/test/session", UriKind.Relative));
         Assert.Contains("httponly", string.Join(";", signIn.Headers.GetValues("Set-Cookie")), StringComparison.OrdinalIgnoreCase);
-        client.DefaultRequestHeaders.Add(PreviewAuthentication.SelectorHeader, PreviewAuthentication.SelectorValue);
         for (var request = 0; request < 23; request++)
         {
             clock.Advance(TimeSpan.FromMinutes(20));
@@ -68,7 +96,6 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
         using var client = CreateClient(application);
         using var signIn = await client.GetAsync(new Uri("/test/session", UriKind.Relative));
         clock.Advance(TimeSpan.FromMinutes(30));
-        client.DefaultRequestHeaders.Add(PreviewAuthentication.SelectorHeader, PreviewAuthentication.SelectorValue);
         using var expired = await client.GetAsync(new Uri("/api/auth/me", UriKind.Relative));
         Assert.Equal(HttpStatusCode.Unauthorized, expired.StatusCode);
     }
@@ -276,8 +303,16 @@ public sealed class PreviewSecurityTests(AuthenticationDatabase database) : ICla
                     var now = clock.GetUtcNow();
                     var properties = new AuthenticationProperties { IsPersistent = true, IssuedUtc = now, ExpiresUtc = now.AddMinutes(30) };
                     properties.Items[PreviewAuthentication.AbsoluteExpiryProperty] = now.AddHours(8).ToString("O", CultureInfo.InvariantCulture);
-                    await context.SignInAsync(PreviewAuthentication.CookieScheme, new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(PreviewAuthentication.LocalAccountClaim, Guid.NewGuid().ToString())], PreviewAuthentication.CookieScheme)), properties).ConfigureAwait(false);
+                    var kind = context.Request.Query["claim"].ToString();
+                    var claims = new List<Claim> { new("sub", Guid.NewGuid().ToString()) };
+                    if (kind != "missing")
+                    {
+                        var localId = kind switch { "invalid" => "not-a-local-guid", "empty-guid" => Guid.Empty.ToString(), _ => Guid.NewGuid().ToString() };
+                        claims.Add(new Claim(PreviewAuthentication.LocalAccountClaim, localId));
+                    }
+
+                    var authenticationType = kind == "foreign-scheme" ? "FormerBearer" : PreviewAuthentication.CookieScheme;
+                    await context.SignInAsync(PreviewAuthentication.CookieScheme, new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType)), properties).ConfigureAwait(false);
                     return;
                 }
 

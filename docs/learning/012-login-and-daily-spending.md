@@ -1,5 +1,8 @@
 # Login and daily spending
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## Follow one login
 
 Open `/` in a fresh tab. The app sends you to `/login`, where your password manager can fill the email and current password. The form sends both to `POST /api/auth/login`. A successful response supplies the token. React keeps it in memory, replaces the login URL with `/`, and requests `GET /api/expenses/today` with a bearer authorization header. Refreshing the page or logging out clears that browser session. Registration at `/register` offers the same main page from its confirmation screen.
