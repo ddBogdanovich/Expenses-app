@@ -91,9 +91,13 @@ test('hosted submission announces pending and prevents repeated credential posts
     // navigation. Read the current DOM directly while the POST is in flight.
     expect(await page.evaluate(() => {
       const button = document.querySelector<HTMLButtonElement>('[data-pending-label]')!
-      return { label: button.textContent, disabled: button.disabled, busy: document.querySelector('form')!.getAttribute('aria-busy') }
+      const form = document.querySelector('form')!
+      const pending = { label: button.textContent, disabled: button.disabled, busy: form.getAttribute('aria-busy') }
+      // Keep the repeated submission in this DOM turn: a second evaluate can
+      // wait behind the deliberately blocked document navigation in Chromium.
+      form.requestSubmit()
+      return pending
     })).toEqual({ label: 'Creating your account…', disabled: true, busy: 'true' })
-    await page.evaluate(() => document.querySelector('form')!.requestSubmit())
     await expect.poll(() => posts).toBe(1)
   } finally { release() }
   await expect(page.getByRole('heading', { name: 'You’re all set.' })).toBeVisible()
