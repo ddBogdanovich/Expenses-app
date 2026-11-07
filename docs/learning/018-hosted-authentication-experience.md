@@ -1,5 +1,8 @@
 # Hosted authentication: presentation and trusted confirmation
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## What changes in Phase 3
 
 The explicitly selected Keycloak preview now offers branded login and email/password-only registration, mode switching, password visibility, password-manager hints/paste, pending feedback, repeated-submit protection, field errors, retained email on failure, and the original registration confirmation. Native forms submit only to the provider. The ordinary application login/registration remains the default.

@@ -1,5 +1,8 @@
 # Authentication: the red step of TDD
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 Historical red milestone: Feature 1 started with executable HTTP acceptance criteria, before authentication was implemented. TDD means red (a test fails for missing behavior), green (implement that behavior), then refactor while preserving behavior.
 
 `tests/PocketLedger.Api.Tests/AuthenticationTests.cs` starts the actual API with `WebApplicationFactory<Program>` and sends JSON HTTP requests. It does not mock handlers or create pretend authentication endpoints. The suite now uses Testcontainers PostgreSQL and real migrations; an API restart scenario proves persistence across hosts. It remains API integration coverage rather than browser automation.

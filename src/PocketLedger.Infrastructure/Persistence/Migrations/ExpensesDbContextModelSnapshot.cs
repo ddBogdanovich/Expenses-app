@@ -33,19 +33,11 @@ namespace PocketLedger.Infrastructure.Persistence.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
-                    b.Property<string>("PasswordHash")
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasFilter("\"PasswordHash\" IS NOT NULL");
 
                     b.ToTable("UserAccounts", null, t =>
                         {
-                            t.HasCheckConstraint("CK_UserAccounts_CredentialKind", "(\"PasswordHash\" IS NOT NULL AND \"ExternalIssuer\" IS NULL AND \"ExternalSubject\" IS NULL) OR (\"PasswordHash\" IS NULL AND \"ExternalIssuer\" IS NOT NULL AND \"ExternalSubject\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_UserAccounts_ExternalIdentityPair", "(\"ExternalIssuer\" IS NULL AND \"ExternalSubject\" IS NULL) OR (\"ExternalIssuer\" IS NOT NULL AND \"ExternalSubject\" IS NOT NULL)");
                         });
                 });
 

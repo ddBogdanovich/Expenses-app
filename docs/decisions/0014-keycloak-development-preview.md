@@ -58,3 +58,7 @@ PostgreSQL session reads and a small ticket-store implementation are additional 
 ## Phase 5 supplement
 
 [ADR 0019](0019-default-browser-session.md) supersedes the browser preview/default split and the reference’s bearer-session gate. HTML document failures now navigate to bounded recovery; API JSON/status contracts and identity/session security remain. Historical rationale above is retained.
+
+## Phase 6 supersession
+
+[ADR 0020](0020-keycloak-credential-retirement.md) supersedes first-party credential storage/endpoints/JWT services and signing-key configuration, the dual-authentication selector, and the legacy-only email index. The default cookie path retains existing scheme/callback/cookie names. Legacy owner/expense rows remain inaccessible historical data. Earlier decisions and verification above retain their historical rationale.

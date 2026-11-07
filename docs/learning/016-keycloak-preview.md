@@ -1,5 +1,8 @@
 # Keycloak preview: protocol identity and application ownership
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## What changes and why
 
 The [Phase 1 plan](../plan-keycloak-authentication.md) introduces a development preview while retaining the current password/JWT flow. [ADR 0014](../decisions/0014-keycloak-development-preview.md) records the chosen design, expiration, theme tooling, and non-destructive cutover policy. Implementation and verification status below must distinguish completed evidence from pending work.

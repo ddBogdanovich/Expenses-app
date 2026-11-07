@@ -1,6 +1,6 @@
 # ADR 0005: Account authentication within the modular monolith
 
-- Status: Accepted; HTTP endpoint mechanism superseded by [ADR 0006](0006-controllers-and-named-policies.md).
+- Status: Credential/password/JWT design superseded by [ADR 0020](0020-keycloak-credential-retirement.md); HTTP endpoint mechanism superseded by [ADR 0006](0006-controllers-and-named-policies.md).
 - Date: 2026-11-01
 - Supersedes the independent-database and empty-context phase of [ADR 0004](0004-postgresql-and-ef-core.md); retains PostgreSQL, EF Core, and the session data volume.
 
@@ -31,3 +31,7 @@ Self-issued tokens require key management and ownership of credential defenses. 
 Testcontainers adds Docker to API test prerequisites but validates the actual provider, constraints, migrations, and persistence. In-memory or SQLite substitutes would not establish PostgreSQL correctness. Startup migrations are convenient locally but unsuitable as an uncoordinated production schema rollout.
 
 The AppHost explicitly pins transitive MessagePack to patched 2.5.303 so audit warnings do not block verification. The patch pin should be removed when an upstream integration supplies that or a later compatible fixed version.
+
+## Phase 6 supersession
+
+[ADR 0020](0020-keycloak-credential-retirement.md) supersedes first-party credential storage/endpoints/JWT services and signing-key configuration, the dual-authentication selector, and the legacy-only email index. The default cookie path retains existing scheme/callback/cookie names. Legacy owner/expense rows remain inaccessible historical data. Earlier decisions and verification above retain their historical rationale.

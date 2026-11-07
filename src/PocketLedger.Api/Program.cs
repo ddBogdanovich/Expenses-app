@@ -12,7 +12,7 @@ builder.Services.AddUseCases();
 builder.Services.AddInfrastructure();
 builder.Services.AddPostgresPersistence(builder.Configuration.GetConnectionString("expenses")
     ?? throw new InvalidOperationException("The expenses database connection string is required."));
-builder.Services.AddAccountAuthentication(builder.Configuration);
+builder.Services.AddAccountAuthentication();
 builder.Services.AddKeycloakPreview(builder.Configuration, builder.Environment);
 if (builder.Configuration.GetValue<bool>("Keycloak:Enabled"))
 {

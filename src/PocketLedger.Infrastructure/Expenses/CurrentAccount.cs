@@ -17,7 +17,12 @@ internal sealed class CurrentAccount(IHttpContextAccessor accessor) : ICurrentAc
                 return null;
             }
 
-            var claim = user.Identity.AuthenticationType == PreviewAuthentication.CookieScheme ? PreviewAuthentication.LocalAccountClaim : "sub";
+            if (user.Identity.AuthenticationType != PreviewAuthentication.CookieScheme)
+            {
+                return null;
+            }
+
+            const string claim = PreviewAuthentication.LocalAccountClaim;
             return Guid.TryParse(user.FindFirstValue(claim), out var id) && id != Guid.Empty ? id : null;
         }
     }

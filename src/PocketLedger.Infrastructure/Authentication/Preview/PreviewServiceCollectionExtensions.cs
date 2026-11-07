@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -49,18 +48,9 @@ public static class PreviewServiceCollectionExtensions
         services.AddSingleton<ITicketStore>(provider => new PostgresTicketStore(provider.GetRequiredService<IServiceScopeFactory>(), provider.GetRequiredService<IDataProtectionProvider>(), provider.GetRequiredService<TimeProvider>()));
         services.AddAuthentication(options =>
         {
-            options.DefaultAuthenticateScheme = PreviewAuthentication.SelectorScheme;
-            options.DefaultChallengeScheme = PreviewAuthentication.SelectorScheme;
-        }).AddPolicyScheme(PreviewAuthentication.SelectorScheme, null, options =>
-        {
-            options.ForwardDefaultSelector = context => context.Request.Headers[PreviewAuthentication.SelectorHeader].ToString() switch
-            {
-                "" => JwtBearerDefaults.AuthenticationScheme,
-                PreviewAuthentication.SelectorValue when settings.Enabled => PreviewAuthentication.CookieScheme,
-                _ => UnsupportedAuthenticationHandler.SchemeName
-            };
-        }).AddScheme<AuthenticationSchemeOptions, UnsupportedAuthenticationHandler>(UnsupportedAuthenticationHandler.SchemeName, null)
-        .AddCookie(PreviewAuthentication.CookieScheme, options =>
+            options.DefaultAuthenticateScheme = PreviewAuthentication.CookieScheme;
+            options.DefaultChallengeScheme = PreviewAuthentication.CookieScheme;
+        }).AddCookie(PreviewAuthentication.CookieScheme, options =>
         {
             options.Cookie.Name = CookieName;
             options.Cookie.HttpOnly = true;
@@ -89,9 +79,6 @@ public static class PreviewServiceCollectionExtensions
                 }
             };
         });
-        services.AddTransient<UnsupportedAuthenticationHandler>(provider => new UnsupportedAuthenticationHandler(
-            provider.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<AuthenticationSchemeOptions>>(),
-            provider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>(), System.Text.Encodings.Web.UrlEncoder.Default));
         services.AddOptions<CookieAuthenticationOptions>(PreviewAuthentication.CookieScheme)
             .Configure<ITicketStore>((options, store) => options.SessionStore = store);
         if (settings.Enabled)

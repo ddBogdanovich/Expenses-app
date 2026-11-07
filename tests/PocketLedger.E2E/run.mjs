@@ -122,7 +122,6 @@ try {
   const apiEnvironment = {
     ASPNETCORE_ENVIRONMENT: 'Development', ASPNETCORE_URLS: `http://localhost:${apiPort}`,
     ConnectionStrings__expenses: `Host=${postgres.getHost()};Port=${postgres.getMappedPort(5432)};Username=postgres;Password=${password};Database=expenses`,
-    Jwt__SigningKey: randomBytes(64).toString('base64'),
     Logging__LogLevel__Microsoft: 'Warning',
     Keycloak__Enabled: 'true', Keycloak__Authority: authority, Keycloak__ClientSecret: clientSecret, Keycloak__BrowserOrigin: baseURL,
     Keycloak__KeyRingPath: keyRingDirectory,

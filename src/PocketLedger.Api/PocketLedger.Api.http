@@ -4,3 +4,13 @@ GET {{PocketLedger.Api_HostAddress}}/api/health
 Accept: application/json
 
 ###
+
+# With no protected cookie, this supported endpoint returns 401, never a login redirect.
+GET {{PocketLedger.Api_HostAddress}}/api/auth/me
+Accept: application/json
+
+###
+
+# Browser login starts through the Vite /api proxy at /api/auth/preview/start?returnUrl=%2F.
+# Follow the hosted form in a browser; do not submit passwords to this API.
+# Former POST /api/auth/register and /api/auth/login endpoints return 404.

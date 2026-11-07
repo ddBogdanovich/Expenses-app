@@ -1,4 +1,4 @@
-const int GeneratedSigningKeyLength = 64;
+const int GeneratedIdentitySecretLength = 64;
 const int BrowserPort = 5173;
 const int KeycloakBrowserPort = 8080;
 const string IdentityPostgresVolumeName = "pocketledger-identity-postgres-data";
@@ -11,13 +11,12 @@ var database = builder.AddPostgres("postgres")
     .WithDataVolume(LocalPostgresVolumeName)
     .AddDatabase("expenses");
 
-var signingKey = builder.AddParameter("jwt-signing-key", new GenerateParameterDefault { MinLength = GeneratedSigningKeyLength }, secret: true, persist: true);
 
 var identityDatabase = builder.AddPostgres("identity-postgres")
     .WithDataVolume(IdentityPostgresVolumeName)
     .AddDatabase("keycloak-db", "keycloak");
-var clientSecret = builder.AddParameter("keycloak-client-secret", new GenerateParameterDefault { MinLength = GeneratedSigningKeyLength }, secret: true, persist: true);
-var keycloakAdminPassword = builder.AddParameter("keycloak-password", new GenerateParameterDefault { MinLength = GeneratedSigningKeyLength }, secret: true, persist: true);
+var clientSecret = builder.AddParameter("keycloak-client-secret", new GenerateParameterDefault { MinLength = GeneratedIdentitySecretLength }, secret: true, persist: true);
+var keycloakAdminPassword = builder.AddParameter("keycloak-password", new GenerateParameterDefault { MinLength = GeneratedIdentitySecretLength }, secret: true, persist: true);
 var keycloak = builder.AddKeycloak("keycloak", KeycloakBrowserPort, adminPassword: keycloakAdminPassword)
     .WithImageTag(KeycloakImageTag)
     .WithArgs("--spi-theme--cache-themes=false", "--spi-theme--cache-templates=false", "--spi-theme--static-max-age=-1")
@@ -34,7 +33,6 @@ var keycloak = builder.AddKeycloak("keycloak", KeycloakBrowserPort, adminPasswor
 var api = builder.AddProject<Projects.PocketLedger_Api>("api")
     .WithReference(database)
     .WaitFor(database)
-    .WithEnvironment("Jwt__SigningKey", signingKey)
     .WithHttpHealthCheck("/api/health")
     .WithExternalHttpEndpoints();
 

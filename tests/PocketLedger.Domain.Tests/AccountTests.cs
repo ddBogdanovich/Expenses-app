@@ -24,15 +24,16 @@ public sealed class AccountTests
     }
 
     [Fact]
-    public void RegistrationRequiresAPasswordVerifierAndAssignsUniqueIdentity()
+    public void ProvisioningRequiresExternalIdentityAndAssignsUniqueLocalIdentity()
     {
         Assert.True(EmailAddress.TryCreate("owner@example.com", out var email));
-        Assert.Throws<ArgumentException>(() => UserAccount.Register(email, ""));
-        var first = UserAccount.Register(email, "password-verifier");
-        var second = UserAccount.Register(email, "another-verifier");
+        var identity = ExternalIdentity.Create("https://identity.example", "opaque-subject");
+        Assert.Throws<ArgumentNullException>(() => UserAccount.Provision(email, null!));
+        var first = UserAccount.Provision(email, identity);
+        var second = UserAccount.Provision(email, identity);
         Assert.NotEqual(Guid.Empty, first.Id);
         Assert.NotEqual(first.Id, second.Id);
         Assert.Equal(email, first.Email);
-        Assert.Equal("password-verifier", first.PasswordHash);
+        Assert.Equal(identity, first.ExternalIdentity);
     }
 }

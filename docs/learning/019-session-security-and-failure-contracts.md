@@ -1,5 +1,8 @@
 # 019 — Sessions, protocol boundaries, and bounded failures
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## The problem
 
 A login can fail after the user leaves PocketLedger: the provider can stop responding, a callback can be replayed, or a transaction cookie can expire. The frontend needs a finite response it can interpret without starting another automatic login. Expense responses also need cache protection when authentication rejects the request before a controller executes.

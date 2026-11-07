@@ -1,5 +1,8 @@
 # Learning note 007: Controllers inside vertical slices and named policies
 
+> Historical authentication examples. [Learning note 022](022-credential-retirement.md) records retirement of the register/login slices, `PasswordPolicy`, `JwtSettings`, hash storage and signing-key wiring. Controller slices and named-value conventions remain current; trace `CreateExpenseController` → `CreateExpenseHandler` → `ExpenseRepository` for a current example. Keycloak owns credential policy, while `PreviewSettings` owns bounded local-session durations and AppHost names generated provider-secret length.
+
+
 A vertical slice groups code by what the application does. It does not require minimal APIs. Registration now lives in `Authentication/Register/RegisterController.cs` and `RegisterHandler.cs`; login has the same arrangement in its own folder. The modular monolith and DDD boundaries stay intact.
 
 A controller is an HTTP adapter. `[ApiController]` enables binding and automatic malformed-request responses; `[Route]` and `[HttpPost]` declare the route. MVC creates the controller and injects its concrete scoped handler. `RegisterAsync` awaits the handler and maps its `Result` to an `IActionResult`. Validation, account creation, and persistence coordination stay in the handler/domain/repository path. `CurrentAccountController` uses `[Authorize]`; credential controllers use `[AllowAnonymous]`.

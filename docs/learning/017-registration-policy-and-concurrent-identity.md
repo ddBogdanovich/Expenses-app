@@ -1,5 +1,8 @@
 # Registration policy and concurrent identity ownership
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## Why the provider and local account have separate jobs
 
 Keycloak decides whether a person can register and whether a password is valid. PocketLedger decides which local account owns an expense. A provider email can change; `(issuer, subject)` remains the account lookup key. Normalizing registration email does not make it a safe expense ownership key or authorize linking to legacy accounts.

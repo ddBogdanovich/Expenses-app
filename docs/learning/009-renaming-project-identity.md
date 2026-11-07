@@ -1,5 +1,8 @@
 # Learning note 009: Renaming a solution without losing its state
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 ## Names participate in contracts
 
 PocketLedger is the product name and .NET namespace prefix. `PocketLedger.slnx` includes the backend, AppHost, and test projects. For example, `src/PocketLedger.Api/PocketLedger.Api.csproj` references the renamed Infrastructure, UseCases, and ServiceDefaults projects. The SDK derives assembly and default namespace names from project filenames, so changing only the solution filename would leave the implementation inconsistent.

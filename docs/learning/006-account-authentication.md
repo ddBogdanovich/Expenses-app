@@ -1,5 +1,8 @@
 # Learning note 006: DDD account authentication
 
+> Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
+
+
 A bounded context is a boundary within which words and rules have a specific meaning. Here an account is an identity used to sign in, not a budget plan. Keeping authentication under `Accounts` and `Authentication` prevents password or token concerns from leaking into allowance calculations. We use folders within the existing modular monolith; separate services would add networking and deployment work without improving this boundary yet.
 
 An aggregate is a consistency boundary with one identity and controlled creation or mutation. `UserAccount.Register` creates a new stable ID and requires a valid `EmailAddress` plus a nonempty opaque password verifier. Private setters protect that state. `EmailAddress.TryCreate` validates input and produces a value object whose equality uses the normalized value. Expected malformed input becomes a 400 `Result` in the handler, not a domain exception. Guard exceptions in the aggregate protect against programmer misuse after validation.
