@@ -123,6 +123,7 @@ public static class PreviewServiceCollectionExtensions
             options.UseTokenLifetime = false;
             options.RequireHttpsMetadata = !localEnvironment;
             options.BackchannelTimeout = PreviewSettings.BackchannelTimeout;
+            options.BackchannelHttpHandler = new PreviewProviderHandler(new HttpClientHandler());
             options.RemoteAuthenticationTimeout = PreviewSettings.TransactionLifetime;
             options.CallbackPath = PreviewAuthentication.CallbackPath;
             options.SignedOutCallbackPath = PreviewAuthentication.SignedOutPath;
@@ -138,8 +139,8 @@ public static class PreviewServiceCollectionExtensions
             options.TokenValidationParameters.ClockSkew = TimeSpan.Zero;
             options.CorrelationCookie.SameSite = SameSiteMode.Lax;
             options.NonceCookie.SameSite = SameSiteMode.Lax;
-            options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-            options.NonceCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            options.CorrelationCookie.SecurePolicy = localEnvironment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+            options.NonceCookie.SecurePolicy = localEnvironment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
             options.Events.OnRedirectToIdentityProvider = context =>
             {
                 context.ProtocolMessage.RedirectUri = settings.BrowserOrigin + PreviewAuthentication.CallbackPath;
@@ -197,8 +198,23 @@ public static class PreviewServiceCollectionExtensions
             options.Events.OnRemoteFailure = context =>
             {
                 context.HandleResponse();
-                context.Response.Redirect(PreviewAuthentication.LandingPath + "?error=authentication_failed");
-                return Task.CompletedTask;
+                var unavailable = PreviewFailureResponse.IsProviderUnavailable(context.Failure);
+                var code = unavailable ? PreviewFailureResponse.ProviderUnavailable : PreviewFailureResponse.CallbackFailed;
+                if (!unavailable && context.Properties is not null)
+                {
+                    // The framework has unprotected state. Missing correlation covers expiry and replay.
+                    if (context.Failure?.Message == "Correlation failed.")
+                    {
+                        code = PreviewFailureResponse.TransactionExpired;
+                    }
+                    else if (context.Request.Query["error"] == "access_denied")
+                    {
+                        code = PreviewFailureResponse.Cancelled;
+                    }
+                }
+
+                return PreviewFailureResponse.WriteAsync(context.HttpContext, code,
+                    unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status400BadRequest);
             };
         });
     }

@@ -18,6 +18,8 @@ if (builder.Configuration.GetValue<bool>("Keycloak:Enabled"))
 {
     // OIDC callback queries contain one-use authentication material.
     builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
+    // Protocol handlers can log untrusted provider descriptions and exceptions.
+    builder.Logging.AddFilter("Microsoft.AspNetCore.Authentication.OpenIdConnect", LogLevel.None);
 }
 
 var app = builder.Build();
@@ -29,17 +31,9 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     await scope.ServiceProvider.GetRequiredService<ExpensesDbContext>().Database.MigrateAsync().ConfigureAwait(false);
 }
 
+app.UseAuthenticationBoundary();
 app.UseAuthentication();
 app.UseAuthorization();
-app.Use(async (context, next) =>
-{
-    if (context.Request.Headers.ContainsKey(PocketLedger.UseCases.Authentication.Preview.PreviewAuthentication.SelectorHeader))
-    {
-        context.Response.Headers.CacheControl = "no-store";
-    }
-
-    await next(context).ConfigureAwait(false);
-});
 app.MapDefaultEndpoints();
 app.MapControllers();
 

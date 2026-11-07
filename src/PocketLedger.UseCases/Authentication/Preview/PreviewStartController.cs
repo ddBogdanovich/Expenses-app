@@ -9,7 +9,20 @@ namespace PocketLedger.UseCases.Authentication.Preview;
 public sealed class PreviewStartController(IPreviewAvailability availability) : ControllerBase
 {
     [HttpGet]
-    public IActionResult Start() => availability.Enabled
-        ? Challenge(new AuthenticationProperties { RedirectUri = PreviewAuthentication.LandingPath }, PreviewAuthentication.OidcScheme)
-        : NotFound();
+    public IActionResult Start([FromQuery(Name = "returnUrl")] string? destination = null)
+    {
+        if (!availability.Enabled)
+        {
+            return NotFound();
+        }
+
+        // Exact application destinations only; never accept arbitrary local paths or nested queries.
+        destination ??= PreviewAuthentication.LandingPath;
+        if (destination is not (PreviewAuthentication.LandingPath or "/" or "/design-system"))
+        {
+            return BadRequest(new { code = "auth.invalid_return", title = "The return destination is not approved." });
+        }
+
+        return Challenge(new AuthenticationProperties { RedirectUri = destination }, PreviewAuthentication.OidcScheme);
+    }
 }
