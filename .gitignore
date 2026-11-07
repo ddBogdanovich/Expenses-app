@@ -22,3 +22,6 @@ output/playwright/
 
 # Python skill/tool caches
 __pycache__/
+
+# Temporary coverage configuration (removed after collection)
+src/PocketLedger.Web/.coverage-config-*/

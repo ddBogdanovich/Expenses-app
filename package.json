@@ -10,7 +10,9 @@
     "check:hygiene": "node scripts/checks.mjs hygiene",
     "test": "node --test scripts/*.test.mjs",
     "build:keycloak-theme": "npm --prefix src/PocketLedger.Web run build && node scripts/build-keycloak-theme.mjs",
-    "build:keycloak-provider": "docker build --output type=local,dest=.artifacts/keycloak-provider infra/keycloak/provider"
+    "build:keycloak-provider": "docker build --output type=local,dest=.artifacts/keycloak-provider infra/keycloak/provider",
+    "coverage": "node scripts/coverage.mjs collect",
+    "coverage:check": "node scripts/coverage.mjs check"
   },
   "devDependencies": {
     "lefthook": "2.2.2"
