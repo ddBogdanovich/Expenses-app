@@ -12,7 +12,7 @@ See [authentication contracts and tests](docs/learning/005-authentication-tests-
 
 ## Keycloak milestone in progress
 
-Phase 6 completes backend credential retirement after Phase 5 made Keycloak the browser default, including session restoration, recovery, logout and the protected development reference. Phases 1–4 supplied an explicitly selected development preview with provider-enforced registration policy, tested concurrent identity provisioning, and branded hosted login/registration/confirmation; production enablement remains outside this local milestone. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed. See [ADR 0015](docs/decisions/0015-keycloak-registration-policy.md) and [learning note 017](docs/learning/017-registration-policy-and-concurrent-identity.md) for registration policy, retained-realm upgrades, and concurrency evidence.
+Phase 6 completes backend credential retirement after Phase 5 made Keycloak the browser default, including session restoration, recovery, logout and the protected development reference. Phases 1–4 supplied an explicitly selected development preview with provider-enforced registration policy, tested concurrent identity provisioning, and branded hosted login/registration/confirmation; production enablement remains outside this local milestone. Phase 7 acceptance is in progress; [learning note 023](docs/learning/023-reproducibility-and-persistence.md) tracks clean setup and full-stack restart evidence separately from the remaining integrated acceptance tasks. See [the plan](docs/plan-keycloak-authentication.md), [research](docs/research-keycloak-authentication.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for the selected architecture and verification status. No account/expense migration or development-data reset is performed. See [ADR 0015](docs/decisions/0015-keycloak-registration-policy.md) and [learning note 017](docs/learning/017-registration-policy-and-concurrent-identity.md) for registration policy, retained-realm upgrades, and concurrency evidence.
 
 ## Frontend
 
@@ -76,7 +76,7 @@ The project configures Microsoft's Playwright MCP server in [`.codex/config.toml
 dotnet test PocketLedger.slnx
 ```
 
-HTTP tests require Docker and start a disposable PostgreSQL 17 container. They apply real migrations and cover API restart persistence, duplicate registration races, and bearer-token validation. They never use the developer database.
+HTTP tests require Docker and start a disposable PostgreSQL 17 container. They apply real migrations and cover API restart persistence, concurrent identity provisioning, cookie sessions, and rejection of former bearer tokens. They never use the developer database.
 
 See [docs/domain-model.md](docs/domain-model.md) for the current rules and worked examples.
 
