@@ -4,6 +4,8 @@
 
 ## Current milestone
 
+Currency/time-zone Phase 1 adds authenticated time-zone Settings and a currency-neutral daily summary, preserving recorded purchase history. Currency selection, multi-currency storage and expense-entry UI remain later phases. See [the delivered Phase 1 plan](docs/plan-user-currency-timezone.md) and [learning note 024](docs/learning/024-account-time-zone-settings.md).
+
 Feature 3 adds browser login and a protected main page showing the signed-in account’s spending for today in the account’s saved time zone, in Polish złoty. Browser authentication now uses Keycloak-hosted forms and a protected server-side cookie session. Phase 6 removes first-party credential endpoints, JWT validation/issuance, and local password-verifier storage. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. Rolling allowance calculations remain planned. See [Login and daily spending](docs/learning/012-login-and-daily-spending.md) and [ADR 0011](docs/decisions/0011-daily-spending-projection.md).
 
 See [the expense implementation guide](docs/learning/008-expense-aggregate-and-ownership.md) and [ADR 0007](docs/decisions/0007-expense-aggregate-and-api-prefix.md).

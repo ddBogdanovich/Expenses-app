@@ -1,6 +1,6 @@
 # 024. Account time-zone Settings
 
-Phase 1 implementation for milestone 8, issues #43–#47. Multi-currency money storage and currency editing remain later phases. See [ADR 0024](../decisions/0024-account-time-zone-and-summary-context.md).
+Phase 1 implementation for milestone 8, issues #43–#47, delivered in [PR #74](https://github.com/ddBogdanovich/Expenses-app/pull/74). Multi-currency money storage and currency editing remain later phases. See [ADR 0024](../decisions/0024-account-time-zone-and-summary-context.md).
 
 ## Test-first evidence
 
@@ -24,13 +24,13 @@ Exercise: choose Kiritimati then Los Angeles at the same instant. Which date is 
 ## Verification evidence (2026-11-08)
 
 - Domain baseline: `dotnet test tests/PocketLedger.Domain.Tests --filter FullyQualifiedName~UnchangedLocallyFuture` failed at the expected rejected non-date correction. The unchanged-date rule is now green with new/changed future dates still rejected.
-- `dotnet build PocketLedger.slnx --no-restore`: zero warnings/errors. `dotnet test PocketLedger.slnx --no-build`: 125 passing tests (25 Domain, 5 UseCases, 95 API). `dotnet format PocketLedger.slnx --no-restore --verify-no-changes` passes.
+- `dotnet build PocketLedger.slnx --no-restore`: zero warnings/errors. `dotnet test PocketLedger.slnx --no-build`: 134 passing tests (27 Domain, 12 UseCases, 95 API). `dotnet format PocketLedger.slnx --no-restore --verify-no-changes` passes.
 - API `PreferencesTests` and `PreferencesMigrationTests` prove defaults, persistence, no-store, CSRF, owner isolation, independent-context concurrent revision writes, opposite-side midnight, six Warsaw DST fixtures, explicit unavailable-zone repair, and exact history preservation. The migration test upgrades populated retained legacy/external accounts and compares every expense field through PostgreSQL row JSON. These expanded boundary/upgrade fixtures were added during implementation; the pre-product red gate is the three original HTTP tests, browser journey, and domain correction test above.
 - `npm --prefix src/PocketLedger.Web run build`, `run lint`, and `test -- --run`: strict build/lint and all 72 tests pass. Tests cover owner changes during periodic verification, temporary hiding/restoration of drafts, catalogue failure/retry, stale forms, and an old in-flight summary resolving after save/return. All four formatter codes retain exact digits beyond Int64 aggregate size.
 - `npm --prefix tests/PocketLedger.E2E test`: all 36 tests pass on a fresh disposable Keycloak/API/two-PostgreSQL stack, including the retained full-stack restart scenario. After the final picker filtering/validation corrections, all five affected `time-zone-settings.spec.ts` journeys pass again, including a fresh browser credential login after API restart, saved preferences/history, invalid input after a successful save, interrupted-save recovery and session expiry. No developer account/database was used.
 - The earlier historical credential-retirement migration regression now asserts irreversibility at that migration's own boundary, before applying the later additive preferences migration. It retains every original assertion; otherwise a deliberate attempted downgrade could remove the newer preferences migration before the older irreversible step rejects it.
 - Independent read-only review found and then approved fixes for draft loss, account changes while content remained mounted, and catalogue retry with a restored draft. No Critical/Important findings remain.
-- Working-tree coverage collection passed. The exact committed comparison against main is run before PR delivery and repeated by CI; see the implementation PR for the final gate outcome.
+- The first exact coverage gate exposed Domain/UseCases regressions. Focused tests now cover owner/zone invariants, invalid revisions, direct unauthenticated calls, missing preferences and a failed concurrent save. `npm run coverage:check` passes for committed `0792d928f218d5e3e655cc7ebd61c23cf2a92c52` against fresh main `675dfcfa755f1abeb16fc56b0e24d720c236dde4`: every module retains/improves exact line and branch coverage. Domain is 117/121 lines and 40/40 branches, UseCases 339/365 and 132/151, Web 275/289 and 369/397. Reports remain ignored under `.artifacts/coverage/`; CI repeats the gate. The following documentation-only completion commit changes no measured runtime/test code.
 
 ### Browser/UI review
 
@@ -40,7 +40,7 @@ MCP exercised searchable city filtering (`Los_Angeles` gives only `America/Los_A
 
 Measured composed contrast: body/canvas 13.23:1, muted/canvas 5.02:1, muted/card 5.36:1, primary text/accent 9.67:1, input text/background 13.58:1, input border/background 3.09:1, focus/card 5.81:1, error text/background 6.42:1 and success text/background 8.55:1. Scoped compact card padding, full-size suggestion targets and input end padding fixed the initial small-target/clipping findings; the selected identifier also appears in wrapping helper text. Artifacts remain under ignored `output/playwright/`, never alongside credentials in committed documentation.
 
-Physical iPhone Safari, real safe-area insets, browser chrome, software keyboard, autofill and VoiceOver remain separate follow-up limits; Chromium emulation does not prove them. No AppHost/resource wiring changed, so the developer volumes and explicit dashboard test runner are unchanged. Verification-only services are stopped after review.
+Physical iPhone Safari, real safe-area insets, browser chrome, software keyboard, autofill and VoiceOver remain separate follow-up limits; Chromium emulation does not prove them. No AppHost/resource wiring changed, so the developer volumes and explicit dashboard test runner are unchanged. Verification-only services were stopped after review. EF reports no pending model changes, the production bundle excludes the development reference, and normal pre-commit/pre-push secret/whitespace/language checks passed.
 
 ## Bounded drafts and uncertain saves
 
