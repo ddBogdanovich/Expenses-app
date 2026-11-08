@@ -28,7 +28,7 @@ test('seeded preview login owns spending, survives reload, and ends both session
   const expense = { amountGrosz: 4237, purchaseDate: today, category: 'Food', note: null, qualifiesForAllowance: true }
   expect((await context.request.post('/api/expenses', { headers: previewHeaders, data: expense })).status()).toBe(400)
   expect((await context.request.post('/api/expenses', { headers: { ...previewHeaders, 'X-CSRF-TOKEN': 'invalid-token' }, data: expense })).status()).toBe(400)
-  expect((await (await context.request.get('/api/expenses/today', { headers: previewHeaders })).json()).totalGrosz).toBe('0')
+  expect((await (await context.request.get('/api/expenses/today', { headers: previewHeaders })).json()).totals[0].amountMinorUnits).toBe('0')
   expect((await context.request.post('/api/auth/preview/logout', { maxRedirects: 0 })).status()).toBe(400)
   const csrf = await (await context.request.get('/api/auth/preview/antiforgery')).json()
   const created = await context.request.post('/api/expenses', {

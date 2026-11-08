@@ -146,8 +146,8 @@ test('two registered preview owners cannot read, replace, delete, or total each 
     expect((await contexts[1].request.put(`/api/expenses/${id}`, { headers: auth[1], data })).status()).toBe(404)
     expect((await contexts[1].request.delete(`/api/expenses/${id}`, { headers: auth[1] })).status()).toBe(404)
     expect(await (await contexts[1].request.get('/api/expenses', { headers })).json()).toEqual([])
-    expect((await (await contexts[1].request.get('/api/expenses/today', { headers })).json()).totalGrosz).toBe('0')
-    expect((await (await contexts[0].request.get('/api/expenses/today', { headers })).json()).totalGrosz).toBe('1234')
+    expect((await (await contexts[1].request.get('/api/expenses/today', { headers })).json()).totals[0].amountMinorUnits).toBe('0')
+    expect((await (await contexts[0].request.get('/api/expenses/today', { headers })).json()).totals[0].amountMinorUnits).toBe('1234')
   } finally {
     await Promise.all(contexts.map(context => context.close()))
   }

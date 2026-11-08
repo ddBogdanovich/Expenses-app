@@ -7,7 +7,7 @@
 
 Let each PocketLedger user choose their time zone and record expenses in PLN, BYN (Belarusian ruble), USD, or EUR without repeatedly selecting the same currency. Preserve recorded amounts, currencies, and purchase dates when preferences change, and show separate totals so different currencies are never added together as if they were equivalent. Deliver Settings and a basic expense-entry form using the existing PocketLedger design.
 
-This is a future feature specification. The current application uses PLN-only money, Warsaw business dates, backend expense CRUD, and a daily spending screen; it does not yet have an expense-entry or Settings screen. This PRD replaces those fixed currency/time-zone product requirements when implemented; existing documentation continues to describe the current implementation until then.
+Phase 1 now implements account-owned time-zone Settings and a currency-neutral daily summary, while expense storage remains PLN-only. Currency-bearing Money/storage, remembered currencies, currency editing and expense-entry UI remain later phases. See [learning note 024](learning/024-account-time-zone-settings.md) for delivered scope and verification; the full milestone criteria below are not yet all complete.
 
 ## User scenarios
 

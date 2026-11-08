@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import TodayPage from './features/today/TodayPage'
+import SettingsPage from './features/settings/SettingsPage'
+import { SettingsMemory } from './features/settings/settings-memory'
 import SessionNotice from './features/authentication/SessionNotice'
 import type { ComponentProps } from 'react'
 import { getSessionStatus, hostedEntry, submitLogout, type Destination } from './features/authentication/auth-api'
@@ -16,7 +18,10 @@ export default function App() {
   const [path, setPath] = useState(window.location.pathname)
   const [session, setSession] = useState<Session>('checking')
   const [attempt, setAttempt] = useState(0)
+  const [verifiedOwnerId, setVerifiedOwnerId] = useState<string | null>(null)
   const previouslyVerified = useRef(window.history.state?.pocketledgerVerified === true)
+  const [settingsMemory] = useState(() => new SettingsMemory())
+  const verifiedOwner = useRef<string | null>(null)
   const loggingOut = useRef(false)
   const suspended = useRef(false)
   const verificationEpoch = useRef(0)
@@ -48,6 +53,9 @@ export default function App() {
           if (previouslyVerified.current) setSession('expired')
           else window.location.replace(hostedEntry(path === '/register' ? 'register' : 'login', destination))
         } else {
+          if (verifiedOwner.current !== status.accountId) settingsMemory.clear()
+          verifiedOwner.current = status.accountId
+          setVerifiedOwnerId(status.accountId)
           previouslyVerified.current = true
           // A non-secret history marker lets reload distinguish an ended session
           // from a first visit, without storing credentials or provider tokens.
@@ -91,9 +99,10 @@ export default function App() {
       window.removeEventListener('popstate', onPopState)
       document.removeEventListener('visibilitychange', recheck)
     }
-  }, [path, destination, publicState, attempt])
+  }, [path, destination, publicState, attempt, settingsMemory])
 
   const endSession = useCallback((message?: string) => {
+    if (!message) settingsMemory.clear()
     verificationEpoch.current++
     suspended.current = true
     if (message) { setSession('expired'); return }
@@ -101,12 +110,12 @@ export default function App() {
     loggingOut.current = true
     setSession('logging-out')
     void submitLogout().catch(() => { loggingOut.current = false; setSession('logout-failed') })
-  }, [])
+  }, [settingsMemory])
 
   useEffect(() => {
     document.title = `${publicState === 'recovery' ? 'Login recovery' : publicState === 'logged-out' ? 'Logged out'
-      : session !== 'authorized' ? 'Your session' : destination === '/design-system' ? 'Design reference' : 'Today'} · PocketLedger`
-  }, [destination, session, publicState])
+      : session !== 'authorized' ? 'Your session' : destination === '/design-system' ? 'Design reference' : path === '/settings' ? 'Settings' : 'Today'} · PocketLedger`
+  }, [destination, session, publicState, path])
 
   let noticeState: ComponentProps<typeof SessionNotice>['state'] = session === 'authorized' || session === 'signed-out' ? 'checking' : session
   if (publicState === 'logged-out' && session === 'signed-out') noticeState = 'logged-out'
@@ -123,5 +132,7 @@ export default function App() {
     <DesignSystemRoute onBack={() => navigate('/')} onEndSession={endSession} />
   </Suspense>
 
-  return <TodayPage onEndSession={endSession} onOpenDesignSystem={DesignSystemRoute ? () => navigate('/design-system') : undefined} />
+  if (path === '/settings') return <SettingsPage key={verifiedOwnerId} memory={settingsMemory} onBack={() => { settingsMemory.clear(); navigate('/') }} onEndSession={endSession} />
+
+  return <TodayPage key={verifiedOwnerId} onOpenSettings={() => navigate('/settings')} onEndSession={endSession} onOpenDesignSystem={DesignSystemRoute ? () => navigate('/design-system') : undefined} />
 }

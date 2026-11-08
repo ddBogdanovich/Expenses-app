@@ -1,6 +1,7 @@
 # ADR 0011. Serve today’s spending as an authenticated read projection
 
 - Status: Accepted
+- Current update: fixed Warsaw calendar/scalar daily-total details are superseded by [ADR 0024](0024-account-time-zone-and-summary-context.md); original rationale below is historical.
 - Date: 2026-11-02
 
 ## Context

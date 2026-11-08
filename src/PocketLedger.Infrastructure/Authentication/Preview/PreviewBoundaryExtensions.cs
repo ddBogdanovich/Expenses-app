@@ -15,7 +15,7 @@ public static class PreviewBoundaryExtensions
         ArgumentNullException.ThrowIfNull(app);
         return app.Use(async (context, next) =>
         {
-            if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase) || context.Request.Path.StartsWithSegments("/api/expenses", StringComparison.OrdinalIgnoreCase))
+            if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase) || context.Request.Path.StartsWithSegments("/api/expenses", StringComparison.OrdinalIgnoreCase) || context.Request.Path.StartsWithSegments("/api/preferences", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.OnStarting(() =>
                 {

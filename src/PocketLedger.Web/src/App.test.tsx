@@ -8,7 +8,7 @@ import { formatTotal } from './features/today/today-api'
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const identity = { accountId: 'local-account' }
 const today = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Warsaw' }).format(new Date())
-const total = (totalGrosz = '1234') => ({ purchaseDate: today(), totalGrosz })
+const total = (amountMinorUnits = '1234', purchaseDate = today()) => ({ purchaseDate, timeZone: 'Europe/Warsaw', preferencesRevision: '0', defaultCurrency: 'PLN', hasExpenses: amountMinorUnits !== '0', totals: [{ currency: 'PLN', amountMinorUnits }] })
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks(); history.replaceState(null, '', '/') })
 
@@ -21,7 +21,7 @@ it('verifies the selected cookie session before requesting private spending', as
   expect(screen.queryByRole('heading', { name: 'Today’s spending' })).toBeNull()
   expect(fetchMock).toHaveBeenCalledTimes(1)
   await act(async () => verify(json(identity)))
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   for (const call of fetchMock.mock.calls) expect(call[1]).toMatchObject({ headers: { 'X-PocketLedger-Auth': 'preview' }, cache: 'no-store', credentials: 'same-origin' })
   expect(history.state).toEqual({ pocketledgerVerified: true })
 })
@@ -31,7 +31,7 @@ it('fails closed on verification errors and allows explicit retry', async () => 
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
   await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }))
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
 })
 
 it('rejects malformed success responses instead of displaying private content', async () => {
@@ -46,11 +46,11 @@ it('clears protected spending before logout and permits retry after a failed req
     .mockResolvedValueOnce(json({}, 503)).mockResolvedValueOnce(json({}, 401))
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Log out' }))
   await screen.findByRole('heading', { name: 'Logout is incomplete.' })
-  expect(screen.queryByText('12,34 zł')).toBeNull()
+  expect(screen.queryByText('12,34 PLN')).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Try logout again' }))
   await screen.findByRole('heading', { name: 'Logout is incomplete.' })
 })
@@ -60,7 +60,7 @@ it('submits an antiforgery-protected logout form without exposing a provider tok
   vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total()))
     .mockResolvedValueOnce(json({ requestToken: 'request-bound-token' })))
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
   expect(submit).toHaveBeenCalledOnce()
   const form = document.querySelector('form')!
@@ -68,7 +68,7 @@ it('submits an antiforgery-protected logout form without exposing a provider tok
   expect(form.getAttribute('action')).toBe('/api/auth/preview/logout')
   expect(form.querySelector('input')?.value).toBe('request-bound-token')
   form.remove()
-  expect(screen.queryByText('12,34 zł')).toBeNull()
+  expect(screen.queryByText('12,34 PLN')).toBeNull()
 })
 
 it('replaces rejected spending with an ended-session recovery action', async () => {
@@ -83,7 +83,7 @@ it('offers retry for an unavailable daily total', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({}, 503)).mockResolvedValue(json(total('0'))))
   render(<App />)
   await userEvent.setup().click(await screen.findByRole('button', { name: 'Try again' }))
-  await screen.findByText('0,00 zł')
+  await screen.findByText('0,00 PLN')
 })
 
 it('restores and periodically verifies the protected design reference', async () => {
@@ -102,21 +102,21 @@ it('restores and periodically verifies the protected design reference', async ()
 it('checks the session on navigation between today and the development reference', async () => {
   vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(json(url === '/api/auth/me' ? identity : total()))))
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Design reference' }))
   await screen.findByText('DESIGN REFERENCE · DEVELOPMENT ONLY')
   await user.click(screen.getByRole('button', { name: 'Back to today' }))
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   expect(location.pathname).toBe('/')
 })
 
 it('hides content before a page enters history and verifies again when restored', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total())).mockResolvedValueOnce(json({}, 401)))
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
-  expect(screen.queryByText('12,34 zł')).toBeNull()
+  expect(screen.queryByText('12,34 PLN')).toBeNull()
   act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
   await screen.findByRole('heading', { name: 'Your session has ended.' })
 })
@@ -129,34 +129,33 @@ it('ignores a late verification after logout', async () => {
   vi.stubGlobal('fetch', fetchMock)
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   await act(async () => vi.advanceTimersByTimeAsync(60_000))
   await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
   await screen.findByRole('heading', { name: 'Logout is incomplete.' })
   await act(async () => finish(json(identity)))
-  expect(screen.queryByText('12,34 zł')).toBeNull()
+  expect(screen.queryByText('12,34 PLN')).toBeNull()
 })
 
 it('formats zero, a grosz and totals beyond JavaScript’s safe integer range', () => {
   const normalized = (digits: string) => formatTotal(digits).replace(/\s/g, ' ')
-  expect(normalized('0')).toBe('0,00 zł')
-  expect(normalized('1')).toBe('0,01 zł')
-  expect(normalized('9223372036854775808')).toBe('92 233 720 368 547 758,08 zł')
+  expect(normalized('0')).toBe('0,00 PLN')
+  expect(normalized('1')).toBe('0,01 PLN')
+  expect(normalized('9223372036854775808')).toBe('92 233 720 368 547 758,08 PLN')
 })
 
-it('reloads a total when the response crosses Warsaw midnight', async () => {
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date('2026-11-02T22:59:59Z'))
-  let finishYesterday!: (response: Response) => void
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity))
-    .mockImplementationOnce(() => new Promise<Response>(resolve => { finishYesterday = resolve }))
-    .mockResolvedValueOnce(json({ purchaseDate: '2026-11-03', totalGrosz: '0' })))
+it('accepts the server day despite browser clock skew and refreshes without a retry loop', async () => {
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+  vi.setSystemTime(new Date('2030-11-02T23:00:01Z'))
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json(total('1234', '2026-11-02')))
+    .mockResolvedValue(json(total('0', '2026-11-03')))
+  vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  await screen.findByText('Loading today’s spending…')
-  vi.setSystemTime(new Date('2026-11-02T23:00:01Z'))
-  await act(async () => finishYesterday(json({ purchaseDate: '2026-11-02', totalGrosz: '1234' })))
-  await screen.findByText('0,00 zł')
-  expect(screen.queryByText('12,34 zł')).toBeNull()
+  await act(async () => { await Promise.resolve() })
+  expect(screen.getByText('12,34 PLN')).toBeTruthy()
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect(screen.getByText('0,00 PLN')).toBeTruthy()
+  expect(fetchMock).toHaveBeenCalledTimes(3)
 })
 
 it.each([
@@ -203,7 +202,7 @@ it('does not let periodic verification restore spending after failed logout', as
     .mockResolvedValueOnce(json({}, 503)).mockResolvedValue(json(identity))
   vi.stubGlobal('fetch', fetchMock)
   render(<App />)
-  await screen.findByText('12,34 zł')
+  await screen.findByText('12,34 PLN')
   await userEvent.setup().click(screen.getByRole('button', { name: 'Log out' }))
   await screen.findByRole('heading', { name: 'Logout is incomplete.' })
   act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
@@ -234,4 +233,83 @@ it('restores retry after navigating Back from a public logout-recovery attempt',
   act(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
   expect(screen.getByRole('button', { name: 'Try logout again' })).toBeTruthy()
   document.querySelector('form')?.remove()
+})
+
+it('preserves an unsaved Settings choice while visibility-triggered verification hides protected content', async () => {
+  const saved = { timeZone: 'Europe/Warsaw', defaultCurrency: 'PLN', recentCurrencies: [], revision: '0', purchaseDate: '2026-11-08' }
+  let finish!: (response: Response) => void
+  let identityChecks = 0
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/auth/me') {
+      if (++identityChecks === 3) return new Promise<Response>(resolve => { finish = resolve })
+      return Promise.resolve(json(identity))
+    }
+    if (url === '/api/preferences') return Promise.resolve(json(saved))
+    if (url === '/api/preferences/time-zones') return Promise.resolve(json(['Europe/Warsaw', 'America/Los_Angeles']))
+    return Promise.resolve(json(total()))
+  }))
+  render(<App />)
+  await screen.findByText('12,34 PLN')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  const combo = await screen.findByRole('combobox', { name: /^Time zone/ })
+  await user.clear(combo)
+  await user.type(combo, 'America/Los_Angeles')
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  expect(screen.queryByRole('combobox')).toBeNull()
+  await act(async () => finish(json(identity)))
+  expect((await screen.findByRole('combobox') as HTMLInputElement).value).toBe('America/Los_Angeles')
+})
+
+it('removes the prior owner’s mounted settings draft when periodic verification observes a new owner', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  const saved = { timeZone: 'Europe/Warsaw', defaultCurrency: 'PLN', recentCurrencies: [], revision: '0', purchaseDate: '2026-11-08' }
+  let owner = 'first-owner'
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(json(
+    url === '/api/auth/me' ? { accountId: owner } : url === '/api/preferences' ? saved
+      : url === '/api/preferences/time-zones' ? ['Europe/Warsaw', 'America/Los_Angeles'] : total(),
+  ))))
+  render(<App />)
+  await screen.findByText('12,34 PLN')
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Settings' }))
+  const combo = await screen.findByRole('combobox')
+  await user.clear(combo)
+  await user.type(combo, 'America/Los_Angeles')
+  owner = 'second-owner'
+  await act(async () => vi.advanceTimersByTimeAsync(60_000))
+  expect((await screen.findByRole('combobox') as HTMLInputElement).value).toBe('Europe/Warsaw')
+  expect(screen.queryByText('Selected: America/Los_Angeles')).toBeNull()
+})
+
+it('opens Settings to repair a saved time zone rather than retrying an unrepairable summary', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(identity)).mockResolvedValueOnce(json({ code: 'preferences.unavailable_zone' }, 409)))
+  render(<App />)
+  expect(await screen.findByRole('button', { name: 'Open Settings' })).toBeTruthy()
+  expect(screen.getByText(/Your saved time zone is unavailable/)).toBeTruthy()
+})
+
+it('discards a pre-Settings summary response arriving after save and return', async () => {
+  const saved = { timeZone: 'America/Los_Angeles', defaultCurrency: 'PLN', recentCurrencies: [], revision: '0', purchaseDate: '2026-11-08' }
+  let finishOld!: (response: Response) => void
+  let reads = 0
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+    if (url === '/api/auth/me') return Promise.resolve(json(identity))
+    if (url === '/api/preferences/time-zones') return Promise.resolve(json(['America/Los_Angeles']))
+    if (url === '/api/preferences') return Promise.resolve(json({ ...saved, revision: options?.method === 'PATCH' ? '1' : '0' }))
+    if (url === '/api/auth/preview/antiforgery') return Promise.resolve(json({ requestToken: 'csrf' }))
+    if (++reads === 1) return new Promise<Response>(resolve => { finishOld = resolve })
+    return Promise.resolve(json({ ...total('500'), timeZone: 'America/Los_Angeles', preferencesRevision: '1' }))
+  }))
+  render(<App />)
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Settings' }))
+  await screen.findByRole('combobox')
+  await user.click(screen.getByRole('button', { name: 'Save settings' }))
+  await screen.findByText('Settings saved.')
+  await user.click(screen.getByRole('button', { name: 'Back to today' }))
+  await screen.findByText('5,00 PLN')
+  await act(async () => finishOld(json(total('1234'))))
+  expect(screen.queryByText('12,34 PLN')).toBeNull()
+  expect(screen.getByText(/America\/Los_Angeles/)).toBeTruthy()
 })

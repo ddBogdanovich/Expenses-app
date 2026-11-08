@@ -1,5 +1,6 @@
 # Learning note 008: Expense aggregates and ownership
 
+> Time-zone Phase 1 update: [learning note 024](024-account-time-zone-settings.md) describes the current account-aware calendar, unchanged-date correction rule, Settings and currency-labelled summary contract. Warsaw/scalar-total examples below record the earlier milestone.
 > Historical milestone note. [Learning note 022](022-credential-retirement.md) describes the current backend: Keycloak-only credentials, default protected cookie sessions, no first-party JWT endpoints/signing key or password storage, and retained legacy owner/expense rows. Code paths and commands below describing legacy credentials record the earlier implementation and are not current setup instructions.
 
 

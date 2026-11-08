@@ -78,6 +78,33 @@ namespace PocketLedger.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PocketLedger.Domain.Preferences.AccountPreferences", b =>
+                {
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefaultCurrency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.PrimitiveCollection<string[]>("RecentCurrencies")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("OwnerId");
+
+                    b.ToTable("AccountPreferences", (string)null);
+                });
+
             modelBuilder.Entity("PocketLedger.Infrastructure.Authentication.Preview.BrowserSession", b =>
                 {
                     b.Property<string>("Id")
@@ -137,6 +164,15 @@ namespace PocketLedger.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("PocketLedger.Domain.Preferences.AccountPreferences", b =>
+                {
+                    b.HasOne("PocketLedger.Domain.Accounts.UserAccount", null)
+                        .WithOne()
+                        .HasForeignKey("PocketLedger.Domain.Preferences.AccountPreferences", "OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

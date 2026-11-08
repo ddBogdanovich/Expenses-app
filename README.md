@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Feature 3 adds browser login and a protected main page showing the signed-in account’s spending for today in Warsaw, in Polish złoty. Browser authentication now uses Keycloak-hosted forms and a protected server-side cookie session. Phase 6 removes first-party credential endpoints, JWT validation/issuance, and local password-verifier storage. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. Rolling allowance calculations remain planned. See [Login and daily spending](docs/learning/012-login-and-daily-spending.md) and [ADR 0011](docs/decisions/0011-daily-spending-projection.md).
+Feature 3 adds browser login and a protected main page showing the signed-in account’s spending for today in the account’s saved time zone, in Polish złoty. Browser authentication now uses Keycloak-hosted forms and a protected server-side cookie session. Phase 6 removes first-party credential endpoints, JWT validation/issuance, and local password-verifier storage. Accounts and expenses persist in PostgreSQL through framework-independent aggregates and EF Core repositories. Each account can access only its own expenses. Rolling allowance calculations remain planned. See [Login and daily spending](docs/learning/012-login-and-daily-spending.md) and [ADR 0011](docs/decisions/0011-daily-spending-projection.md).
 
 See [the expense implementation guide](docs/learning/008-expense-aggregate-and-ownership.md) and [ADR 0007](docs/decisions/0007-expense-aggregate-and-api-prefix.md).
 
@@ -92,7 +92,7 @@ Domain <- UseCases <- Infrastructure <- Api <- AppHost
 
 - `Domain` owns business language and invariants.
 - `UseCases` owns feature handlers and ASP.NET Core controllers inside each vertical slice.
-- `Infrastructure` implements EF Core/Npgsql persistence, owner-filtered expense projections, Warsaw dates, the browser OIDC adapter, local identity resolution, antiforgery, and protected PostgreSQL ticket store. Messaging remains planned.
+- `Infrastructure` implements EF Core/Npgsql persistence, owner-filtered expense projections, account-owned preferences and regional dates, the browser OIDC adapter, local identity resolution, antiforgery, and protected PostgreSQL ticket store. Messaging remains planned.
 - `Api` composes the application.
 - `AppHost` runs and observes local resources.
 - `Web` is a browser frontend; Aspire starts its Vite development server and supplies the API endpoint for its `/api` development proxy.
@@ -148,6 +148,26 @@ E2E_REALM_BASELINE=phase1 npm --prefix tests/PocketLedger.E2E test
 
 See the [E2E harness guide](tests/PocketLedger.E2E/README.md), [ADR 0014](docs/decisions/0014-keycloak-development-preview.md), and [learning note 016](docs/learning/016-keycloak-preview.md) for evidence and remaining milestone boundaries. The browser suite runs separately from the dashboard’s backend `tests` resource and has its own CI job.
 
+## Time-zone Settings (currency/time-zone Phase 1)
+
+From today's spending, open **Settings**, search a regional IANA zone, and explicitly save. Save confirmation appears after persistence; Cancel changes nothing. Returning to today or reloading uses the saved zone. Every account starts with Europe/Warsaw, PLN and empty recent currency usage. Currency editing, multi-currency expense storage, and the creation form remain later phases. The summary renderer can already represent independent PLN/BYN/USD/EUR totals.
+
+The additive `AccountFinancialPreferences` migration backfills all retained accounts without changing identities, tickets or expenses. New provisioning saves the same defaults atomically with the local account. Supported hosts require ICU/tzdata; the server catalogue is authoritative. If a previously saved zone becomes unavailable, Settings permits repair and daily operations report an actionable failure instead of silently changing the date. See [ADR 0024](docs/decisions/0024-account-time-zone-and-summary-context.md) and [learning note 024](docs/learning/024-account-time-zone-settings.md) for implementation and acceptance evidence.
+
+| Method | Route | Contract |
+| --- | --- | --- |
+| GET | `/api/preferences` | Saved zone, PLN default, empty recents, revision string, server local purchase date (null only for unavailable zone) |
+| GET | `/api/preferences/time-zones` | Authenticated server-supported regional IANA identifier array |
+| PATCH | `/api/preferences` | `{"timeZone":"America/Los_Angeles","expectedRevision":"0"}`; returns confirmed preferences, 409 for stale revision |
+
+Preferences use the existing cookie/antiforgery/no-store boundary. Owner identity is never accepted from JSON. Today's contract is now:
+
+```json
+{"purchaseDate":"2026-11-08","timeZone":"Europe/Warsaw","preferencesRevision":"0","defaultCurrency":"PLN","hasExpenses":true,"totals":[{"currency":"PLN","amountMinorUnits":"4237"}]}
+```
+
+Production expenses remain PLN-only in this phase. An empty day returns `hasExpenses:false` with one PLN zero entry. Totals and revisions are decimal strings; browser formatting uses BigInt and displays explicit currency codes. The server computes the date from one captured preference context and UTC business instant; browser zone/clock skew cannot override it. Recorded purchase dates never shift when Settings changes.
+
 ## Expense HTTP contract
 
 All backend endpoints use the `/api` prefix. Expense requests require the protected cookie session. Mutations also need a request token from `/api/auth/preview/antiforgery` in `X-CSRF-TOKEN`. The historical `X-PocketLedger-Auth` header is ignored; it cannot select another authentication mode. Routes are:
@@ -156,7 +176,7 @@ All backend endpoints use the `/api` prefix. Expense requests require the protec
 | --- | --- | --- |
 | POST | `/api/expenses` | 201, expense JSON and `Location` |
 | GET | `/api/expenses` | 200, JSON array of the caller's expenses |
-| GET | `/api/expenses/today` | 200, Warsaw purchase date and total for the caller, e.g. `{"purchaseDate":"2026-11-02","totalGrosz":"4237"}` |
+| GET | `/api/expenses/today` | 200, captured account date/zone/revision and exact currency-labelled totals (example below) |
 | GET | `/api/expenses/{id}` | 200, expense JSON |
 | PUT | `/api/expenses/{id}` | 200, replaced expense JSON |
 | DELETE | `/api/expenses/{id}` | 204 |
@@ -167,7 +187,7 @@ Create and replace accept the same full payload:
 { "amountGrosz": 3500, "purchaseDate": "2026-01-01", "category": "Food", "note": "Lunch", "qualifiesForAllowance": true }
 ```
 
-Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in Europe/Warsaw. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the validated cookie session’s resolved local account identity; JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.
+Responses add `id`. Amount is a positive signed-64-bit integer in grosz (3500 = 35.00 PLN); dates are calendar dates, no later than today in the saved account time zone for new/changed dates. An unchanged recorded date remains correctable even if switching zones makes it locally future. Category is required free text with surrounding whitespace trimmed. Note may be null or omitted. The allowance classification must be explicit, including `false`. Ownership comes from the validated cookie session’s resolved local account identity; JSON owner fields are ignored. Missing/invalid credentials return 401, invalid purchase input 400, and missing or foreign expenses 404. A row deleted during an edit may return 409. Listing is ordered by purchase date descending and then ID and currently returns all owned expenses; pagination and stale-edit detection remain future work. Expense CRUD records data only; it does not calculate an allowance balance.
 
 ## Project identity
 

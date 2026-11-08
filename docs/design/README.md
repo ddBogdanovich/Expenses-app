@@ -86,9 +86,9 @@ Validation appears near the field; a form-level request failure supplies context
 
 ## Money and business language
 
-PLN is the only currency. Use the existing `formatTotal` formatter for daily totals: Polish formatting, two grosz digits, and the zł currency mark. Keep integer-grosz strings/BigInt precise; do not convert totals through JavaScript floating-point numbers. Dates represent the Warsaw business calendar; use an explicit timezone when displaying the API's date-only value. The current display language for full dates is English (en-GB).
+Production expenses remain PLN-only in currency/time-zone Phase 1. The neutral `formatTotal` renderer accepts PLN/BYN/USD/EUR totals independently: Polish formatting, two minor-unit digits, and an explicit currency code. Keep integer strings/BigInt precise; do not convert totals through JavaScript floating-point numbers. Dates represent the saved account calendar. Use UTC only as a presentation anchor for the API's date-only value; never shift it through the browser or account zone. The current display language for full dates is English (en-GB).
 
-“Today’s spending” includes all owned purchases dated today in Warsaw. It is not a remaining balance. An empty day shows zero and “No expenses recorded today.” Loading shows text, and failure shows an explanation plus retry; neither is zero. Very large totals grow/wrap rather than being clipped or abbreviated into an inaccurate amount.
+“Today’s spending” includes all owned purchases dated today in the saved account zone. It is not a remaining balance. An empty day shows zero and “No expenses recorded today.” Loading shows text, and failure shows an explanation plus retry; neither is zero. Very large totals grow/wrap rather than being clipped or abbreviated into an inaccurate amount.
 
 Rolling allowance and negative available-balance screens are **planned**, not implemented. Future work must distinguish recorded spending, daily allowance, and available allowance, and describe a negative balance factually. Do not color a spending total red merely because a person spent money. These requirements do not introduce allowance calculations into the existing summary.
 
@@ -123,3 +123,9 @@ Protected content is unmounted before page-history snapshots and logout; restora
 ## Final local authentication acceptance
 
 [Learning note 023](../learning/023-reproducibility-and-persistence.md) records the final integrated MCP/UI review, original/hosted/final comparison and full responsive/text matrix. The design and reference examples are unchanged by Phase 7; new work retains the same validation requirements. Physical iPhone Safari, hardware safe areas, software keyboard/autofill and VoiceOver remain separate checks.
+
+## Settings recipe
+
+`/settings` uses PageShell with Back to today/Log out and a focused `.today-main` task layout. The feature-owned form uses `.surface-card`, `.ledger-form`, Notice and HeroUI v3 ComboBox with a visible Time zone label, searchable server identifiers and keyboard suggestions. Save explicitly, prevent repeated submissions while pending, retain selection after failure, and require review/reload after a stale revision. Currency is visibly PLN; currency editing remains a later phase. Cancel performs no mutation. Confirmation receives focus after persistence. Unsupported stored zones remain visible for explicit repair. The reference's Separate currencies example is local sample data, not a claim of production foreign-currency storage.
+
+Settings uses the same compact card-padding token as account forms at the existing compact breakpoint. Its suggestions trigger has the full shared touch target; the input reserves matching end space and a wrapping helper repeats the selected identifier for enlarged text. Typed values must correspond to a selected catalogue item before save. Preserve the draft during temporary verification but hide the form until both access and catalogue are available.

@@ -1,6 +1,7 @@
 # ADR 0007: Small expense aggregate and authenticated ownership
 
 - Status: Accepted
+- Current update: fixed Warsaw calendar/scalar daily-total details are superseded by [ADR 0024](0024-account-time-zone-and-summary-context.md); original rationale below is historical.
 - Date: 2026-11-01
 - Supersedes the unprefixed route paths in [ADR 0006](0006-controllers-and-named-policies.md). Its controller and named-policy decisions remain unchanged.
 

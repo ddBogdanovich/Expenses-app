@@ -29,7 +29,7 @@ public sealed class Expense
         bool qualifiesForAllowance, DateOnly today, [NotNullWhen(true)] out Expense? expense)
     {
         expense = null;
-        if (ownerId == Guid.Empty || category is null || !IsValid(amount, purchaseDate, category, today))
+        if (ownerId == Guid.Empty || category is null || !IsValid(amount, purchaseDate, category) || purchaseDate > today)
         {
             return false;
         }
@@ -41,7 +41,7 @@ public sealed class Expense
     /// <summary>Replaces purchase details atomically; invalid input leaves every field unchanged.</summary>
     public bool TryUpdate(Money amount, DateOnly purchaseDate, string? category, string? note, bool qualifiesForAllowance, DateOnly today)
     {
-        if (category is null || !IsValid(amount, purchaseDate, category, today))
+        if (category is null || !IsValid(amount, purchaseDate, category) || (purchaseDate != PurchaseDate && purchaseDate > today))
         {
             return false;
         }
@@ -54,6 +54,6 @@ public sealed class Expense
         return true;
     }
 
-    private static bool IsValid(Money amount, DateOnly purchaseDate, string? category, DateOnly today) =>
-        amount.Grosz > 0 && purchaseDate != default && purchaseDate <= today && !string.IsNullOrWhiteSpace(category);
+    private static bool IsValid(Money amount, DateOnly purchaseDate, string? category) =>
+        amount.Grosz > 0 && purchaseDate != default && !string.IsNullOrWhiteSpace(category);
 }

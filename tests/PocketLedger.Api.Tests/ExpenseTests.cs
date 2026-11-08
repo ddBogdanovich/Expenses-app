@@ -256,7 +256,7 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
         await CreateAsync(other).ConfigureAwait(true);
         await AuthenticateAsync(client).ConfigureAwait(true);
         using var empty = await client.GetAsync(today).ConfigureAwait(true);
-        Assert.Equal("0", (await ReadAsync(empty).ConfigureAwait(true)).GetProperty("totalGrosz").GetString());
+        Assert.Equal("0", (await ReadAsync(empty).ConfigureAwait(true)).GetProperty("totals")[0].GetProperty("amountMinorUnits").GetString());
 
         using var earlier = await client.PostAsJsonAsync("/api/expenses", new
         {
@@ -275,10 +275,13 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
         var body = await ReadAsync(result).ConfigureAwait(true);
         Assert.Equal("2026-01-01", body.GetProperty("purchaseDate").GetString());
-        Assert.Equal("9223372036854775808", body.GetProperty("totalGrosz").GetString());
+        Assert.Equal("9223372036854775808", body.GetProperty("totals")[0].GetProperty("amountMinorUnits").GetString());
     }
 
-    private sealed record FixedBusinessCalendar(DateOnly Today) : IBusinessCalendar;
+    private sealed record FixedBusinessCalendar(DateOnly Today) : IBusinessCalendar
+    {
+        public DateOnly TodayIn(string timeZone, DateTimeOffset instant) => Today;
+    }
 
     [Theory]
     [InlineData("2026-01-01T22:30:00Z", "2026-01-01")]
@@ -293,7 +296,7 @@ public sealed class ExpenseTests(AuthenticationDatabase database) : IClassFixtur
             services.AddSingleton<TimeProvider>(new FrozenTimeProvider(instant))));
         var calendar = configured.Services.GetRequiredService<IBusinessCalendar>();
 
-        Assert.Equal(DateOnly.Parse(expectedDate, CultureInfo.InvariantCulture), calendar.Today);
+        Assert.Equal(DateOnly.Parse(expectedDate, CultureInfo.InvariantCulture), calendar.TodayIn("Europe/Warsaw", instant));
     }
 
     private sealed class FrozenTimeProvider(DateTimeOffset instant) : TimeProvider
