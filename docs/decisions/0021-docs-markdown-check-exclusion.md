@@ -1,6 +1,6 @@
 # ADR 0021: Keep lightweight hygiene for docs-only Markdown changes
 
-- Status: Accepted
+- Status: Accepted; local pre-push and CI event selection are superseded by [ADR 0022](0022-pr-centered-verification.md). Secret/whitespace protection and docs-only PR behavior remain.
 - Date: 2026-11-08
 - Supersedes the docs-only/new-branch check selection and unconditional CI application-job policies in [ADR 0012](0012-git-hooks-and-continuous-integration.md) and [ADR 0018](0018-coverage-regression-gate.md); all other verification policies remain in effect.
 

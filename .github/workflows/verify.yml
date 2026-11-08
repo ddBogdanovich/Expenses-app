@@ -76,8 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      # PRs compare the tested merge candidate to the event's base. Feature pushes
-      # compare fresh main; main pushes compare the previous main revision.
+      # PRs compare the merge candidate to their base; main pushes compare the
+      # previous main revision. Feature pushes never reach this job.
       COVERAGE_BASE: ${{ github.event.pull_request.base.sha || (github.ref == 'refs/heads/main' && github.event.before) || '' }}
       COVERAGE_HEAD: ${{ github.sha }}
     steps:
@@ -104,6 +104,7 @@ jobs:
 
   authentication-e2e:
     needs: hygiene
+    if: needs.hygiene.outputs.run_application_checks == 'true' || github.event_name == 'pull_request'
     strategy:
       matrix:
         realm-baseline: [current, phase1]
@@ -112,10 +113,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # Keep both existing matrix check names reporting success for docs-only PRs.
-      - name: Documentation-only change
+      # Docs-only PRs keep both required contexts; feature pushes need no runners.
+      - name: Application checks not required
         if: needs.hygiene.outputs.run_application_checks == 'false'
-        run: echo "Documentation-only change; authentication E2E is not required."
+        run: echo "Hygiene-only event; authentication E2E is not required."
       - uses: actions/checkout@v7
         if: needs.hygiene.outputs.run_application_checks == 'true'
       - uses: actions/setup-node@v7

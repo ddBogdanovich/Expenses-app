@@ -5,7 +5,6 @@ import { pathToFileURL } from 'node:url'
 
 const solution = 'PocketLedger.slnx'
 const webDirectory = 'src/PocketLedger.Web'
-const hookArtifacts = '.artifacts/hooks'
 // Installed skills are vendored tools; keep whitespace policy focused on maintained files.
 const maintainedFiles = ['--', '.', ':!.agents/skills/**']
 const zeroObjectId = /^0+$/
@@ -25,57 +24,26 @@ function onlyDocsMarkdown(files) {
   return files.length > 0 && files.every(file => /^docs\/.+\.md$/.test(file))
 }
 
-export function affectedAreas(files) {
-  const shared = files.some(file => /^(coverage\.runsettings$|\.config\/|scripts\/|\.lefthook\/|\.github\/|package(?:-lock)?\.json$|lefthook\.yml$|\.editorconfig$|\.gitattributes$|\.gitleaks\.toml$)/.test(file))
-  return {
-    backend: shared || files.some(file => /^(PocketLedger\.AppHost\/|tests\/|src\/PocketLedger\.(?!Web\/))/.test(file)
-      || /(?:\.(?:cs|csproj|props|targets|slnx)|global\.json|[Nn]u[Gg]et\.[Cc]onfig)$/.test(file)),
-    frontend: shared || files.some(file => file.startsWith(`${webDirectory}/`)),
-  }
-}
-
-// Read Git's actual pre-push protocol, including new branches, deletions and multiple refs.
-// New docs-only branches can use their known main ancestry. Otherwise an unknown
-// remote object still selects every file rather than guessing which checks to skip.
-export function pushedFiles(input, cwd) {
-  if (!input.trim()) return paths(git(['ls-files', '-z'], cwd))
-  const files = new Set()
+// Read and validate Git's actual pre-push protocol. Every non-deleted ref is
+// checked at its exact local commit, including branches other than the checkout.
+export function pushedCommits(input, cwd) {
+  if (!input.trim()) return [git(['rev-parse', 'HEAD'], cwd).trim()]
+  const commits = new Set()
   for (const line of input.trim().split('\n')) {
     const [localRef, localId, remoteRef, remoteId, extra] = line.trim().split(/\s+/)
     if (!localRef || !remoteRef || !/^[a-f0-9]{40,64}$/.test(localId ?? '')
       || !/^[a-f0-9]{40,64}$/.test(remoteId ?? '') || extra) {
       throw new Error('Invalid Git pre-push input.')
     }
-    if (zeroObjectId.test(localId)) continue
-    const remoteExists = !zeroObjectId.test(remoteId)
-      && spawnSync('git', ['cat-file', '-e', `${remoteId}^{commit}`], { cwd, stdio: 'ignore' }).status === 0
-    let changed
-    if (remoteExists) {
-      changed = git(['diff', '--name-only', '--no-renames', '-z', remoteId, localId, '--'], cwd)
-    } else if (zeroObjectId.test(remoteId) && localRef.startsWith('refs/heads/')) {
-      const base = spawnSync('git', ['merge-base', 'refs/remotes/origin/main', localId], { cwd, encoding: 'utf8' })
-      if (base.status === 0) {
-        const candidates = git(['diff', '--name-only', '--no-renames', '-z', base.stdout.trim(), localId, '--'], cwd)
-        if (onlyDocsMarkdown(paths(candidates))) changed = candidates
-      }
-    }
-    changed ??= git(['ls-tree', '-r', '--name-only', '-z', localId], cwd)
-    for (const file of paths(changed)) files.add(file)
+    if (!zeroObjectId.test(localId)) commits.add(localId)
   }
-  return [...files]
-}
-
-export function pushedCommits(input, cwd) {
-  // Reuse protocol validation, including deletions and malformed IDs.
-  pushedFiles(input, cwd)
-  if (!input.trim()) return [git(['rev-parse', 'HEAD'], cwd).trim()]
-  return [...new Set(input.trim().split('\n').map(line => line.trim().split(/\s+/)[1]).filter(id => !zeroObjectId.test(id)))]
+  return [...commits]
 }
 
 function ciRequiresApplicationChecks(eventName, event, cwd) {
   if (eventName === 'push') {
-    if (!event.ref?.startsWith('refs/heads/')) return true
-    return !onlyDocsMarkdown(pushedFiles(`${event.ref} ${event.after} ${event.ref} ${event.before}\n`, cwd))
+    // Feature pushes already receive hygiene; PRs are the pre-merge build gate.
+    return event.ref === 'refs/heads/main' || !event.ref?.startsWith('refs/heads/')
   }
   if (eventName === 'pull_request') {
     const base = event.pull_request?.base?.sha
@@ -122,19 +90,11 @@ function frontend(cwd) {
   }
 }
 
-function backend(cwd, fullSuite) {
-  // Local push builds do not overwrite assemblies used by a running Aspire API.
-  const artifacts = fullSuite ? [] : ['--artifacts-path', hookArtifacts]
-  run('dotnet', ['restore', solution, ...artifacts], cwd)
-  run('dotnet', ['build', solution, '--no-restore', ...artifacts], cwd)
-  if (fullSuite) {
-    run('dotnet', ['test', solution, '--no-build'], cwd)
-    run('dotnet', ['format', solution, '--no-restore', '--verify-no-changes'], cwd)
-  } else {
-    for (const name of ['Domain', 'UseCases']) {
-      run('dotnet', ['test', `tests/PocketLedger.${name}.Tests/PocketLedger.${name}.Tests.csproj`, '--no-build', ...artifacts], cwd)
-    }
-  }
+function backend(cwd) {
+  run('dotnet', ['restore', solution], cwd)
+  run('dotnet', ['build', solution, '--no-restore'], cwd)
+  run('dotnet', ['test', solution, '--no-build'], cwd)
+  run('dotnet', ['format', solution, '--no-restore', '--verify-no-changes'], cwd)
 }
 
 function stagedChecks(cwd) {
@@ -166,27 +126,12 @@ export function main(mode, cwd = process.cwd(), input = '') {
       stagedChecks(cwd)
       break
     case 'pre-push': {
-      const files = pushedFiles(input, cwd)
-      if (onlyDocsMarkdown(files)) {
-        committedHygiene(cwd, pushedCommits(input, cwd))
-        break
-      }
-      const areas = affectedAreas(files)
-      if (areas.backend || areas.frontend) {
-        console.log('Build/lint checks inspect the working tree; coverage compares each pushed commit against fresh origin/main.')
-        run(process.execPath, ['--test', 'scripts/checks.test.mjs', 'scripts/coverage.test.mjs'], cwd)
-      }
-      if (areas.backend) backend(cwd, false)
-      if (areas.frontend) frontend(cwd)
-      if (areas.backend || areas.frontend) {
-        run(process.execPath, ['scripts/coverage.mjs', 'check',
-          ...pushedCommits(input, cwd).flatMap(id => ['--head', id]),
-          ...Object.entries(areas).filter(([, affected]) => affected).flatMap(([area]) => ['--area', area])], cwd)
-      }
+      const commits = pushedCommits(input, cwd)
+      if (commits.length) committedHygiene(cwd, commits)
       break
     }
     case 'backend':
-      backend(cwd, true)
+      backend(cwd)
       break
     case 'frontend':
       frontend(cwd)
