@@ -165,17 +165,19 @@ Criteria C1–C19 below refer to the PRD's Definition of done checkboxes in thei
 **Test-first gate:** Before infrastructure/setup fixes, define or extend executable clean-setup and stop/restart journeys, and run the full retained E2E suite against Phase 6 using disposable resources. Include registration, stable local identity, owned expenses, and data survival without manual realm reconstruction. If all criteria are already green, record a verification-only baseline and keep it green; do not invent a failure. Any discovered setup defect needs a reproducing failing acceptance test before its fix, followed by the same scenario passing.
 **Tasks:**
 
-- [ ] Validate clean-checkout setup with disposable volumes/secrets: reproduce realm/client/theme configuration, register two users, and access owned application data without manually rebuilding provider settings. Fix infrastructure/setup gaps and verify imports never overwrite existing users during ordinary startup.
-- [ ] Stop/restart the local stack and verify Keycloak identities, local account GUIDs, expenses, and ownership remain intact. Confirm the named application volume is retained and identity persistence is independent; record that persistence is not a backup or an account-migration guarantee.
-- [ ] Run the final frontend checks, full backend suite/formatting, and CI-equivalent checks affected by the change. Start the dashboard `tests` resource explicitly, inspect exit code/logs, and prove it remains inactive at normal startup and receives no development connection/signing secrets.
-- [ ] Repeat final Playwright MCP and UI/UX acceptance against the integrated default stack, including the entire documented browser matrix, real registration/login/logout, session/callback/provider-error states, before/after visual comparisons, and network/storage checks. Record physical iPhone verification limits separately; return any implementation fixes to their owning frontend/backend phase and repeat affected checks.
-- [ ] Audit all 19 PRD criteria and each phase's test-first evidence, including justified already-green/not-applicable cases; review README, root/frontend instructions, domain/design descriptions, diagrams, learning notes/exercises, ADR links, setup, reset, and repeatable E2E commands for consistency. Leave no unresolved acceptance finding and stop verification-only resources.
+- [x] Validate clean-checkout setup with disposable volumes/secrets: reproduce realm/client/theme configuration, register two users, and access owned application data without manually rebuilding provider settings. Fix infrastructure/setup gaps and verify imports never overwrite existing users during ordinary startup.
+- [x] Stop/restart the local stack and verify Keycloak identities, local account GUIDs, expenses, and ownership remain intact. Confirm the named application volume is retained and identity persistence is independent; record that persistence is not a backup or an account-migration guarantee.
+- [x] Run the final frontend checks, full backend suite/formatting, and CI-equivalent checks affected by the change. Start the dashboard `tests` resource explicitly, inspect exit code/logs, and prove it remains inactive at normal startup and receives no development connection/signing secrets.
+- [x] Repeat final Playwright MCP and UI/UX acceptance against the integrated default stack, including the entire documented browser matrix, real registration/login/logout, session/callback/provider-error states, before/after visual comparisons, and network/storage checks. Record physical iPhone verification limits separately; return any implementation fixes to their owning frontend/backend phase and repeat affected checks.
+- [x] Audit all 19 PRD criteria and each phase's test-first evidence, including justified already-green/not-applicable cases; review README, root/frontend instructions, domain/design descriptions, diagrams, learning notes/exercises, ADR links, setup, reset, and repeatable E2E commands for consistency. Leave no unresolved acceptance finding and stop verification-only resources.
 
 **Definition of done:**
 
-- [ ] Clean setup and restart exercises pass without developer data or manually reconstructed realm settings; normal startup preserves new identities and expenses.
-- [ ] Required checks and the explicit dashboard test run pass; final Playwright MCP and UI/UX reviews have no unresolved issues, with any physical-device limitations stated.
-- [ ] Every PRD criterion has evidence, documentation and links match the final implementation, and no temporary legacy authentication remains.
+- [x] Clean setup and restart exercises pass without developer data or manually reconstructed realm settings; normal startup preserves new identities and expenses.
+- [x] Required checks and the explicit dashboard test run pass; final Playwright MCP and UI/UX reviews have no unresolved issues, with any physical-device limitations stated.
+- [x] Every PRD criterion has evidence, documentation and links match the final implementation, and no temporary legacy authentication remains.
+
+**Evidence:** [Learning note 023](learning/023-reproducibility-and-persistence.md) records clean-source user-free setup, full-service stop/restart in both realm modes, the explicit dashboard run, final MCP/UI review, all 19 criteria and historical test-first audit. Production enablement and physical iPhone verification remain separate; no developer data was reset or migrated.
 
 ## PRD coverage
 

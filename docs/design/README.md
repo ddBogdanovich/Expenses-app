@@ -119,3 +119,7 @@ Native templates use the packaged production classes and required state attribut
 `SessionNotice` is feature-owned presentation built from `PageShell`, `Notice`, HeroUI retry buttons and the existing account-link style. It supplies one focused heading and concrete retry/return actions for provider unavailability, cancellation, failed callbacks, expired transactions, ended sessions and failed logout. Use neutral information for an ended session; unavailable verification/protocol failures need error presentation. Never display a zero spending value while access is unresolved. Recovery requires explicit action and must not automatically repeat the failing redirect.
 
 Protected content is unmounted before page-history snapshots and logout; restoration waits for verification. Shared notice/form examples remain local in the reference. See [ADR 0019](../decisions/0019-default-browser-session.md) and [learning note 021](../learning/021-default-browser-session.md).
+
+## Final local authentication acceptance
+
+[Learning note 023](../learning/023-reproducibility-and-persistence.md) records the final integrated MCP/UI review, original/hosted/final comparison and full responsive/text matrix. The design and reference examples are unchanged by Phase 7; new work retains the same validation requirements. Physical iPhone Safari, hardware safe areas, software keyboard/autofill and VoiceOver remain separate checks.
