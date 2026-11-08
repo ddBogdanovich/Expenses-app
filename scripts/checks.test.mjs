@@ -133,10 +133,10 @@ test('CI classifies complete PR changes and exact push revisions rather than onl
     return execute(process.execPath, [join(root, 'scripts/checks.mjs'), 'ci-scope'], cwd,
       { env: { ...process.env, GITHUB_EVENT_NAME: eventName, GITHUB_EVENT_PATH: eventPath } })
   }
-  const check = (eventName, event, expected) => {
+  const check = (eventName, event, expected, upgrade = false) => {
     const result = classify(eventName, event)
     assert.equal(result.status, 0, result.stdout + result.stderr)
-    assert.equal(result.stdout.trim(), `run_application_checks=${expected}`)
+    assert.equal(result.stdout.trim(), `run_application_checks=${expected}\nrun_upgrade_checks=${upgrade}`)
   }
   check('push', { ref: 'refs/heads/docs', before: base, after: docs }, false)
   check('push', { ref: 'refs/heads/docs', before: zeroId, after: docs }, false)
@@ -149,7 +149,16 @@ test('CI classifies complete PR changes and exact push revisions rather than onl
   check('push', { ref: 'refs/heads/feature', before: base, after: code }, false)
   check('push', { ref: 'refs/heads/main', before: base, after: docs }, true)
   check('push', { ref: 'refs/heads/main', before: base, after: code }, true)
-  check('push', { ref: 'refs/tags/v1', before: base, after: docs }, true)
+  check('push', { ref: 'refs/tags/v1', before: base, after: docs }, true, true)
+  const auth = commitFile(cwd, 'infra/keycloak/example.json', '{}\n')
+  check('pull_request', { pull_request: { base: { sha: base }, head: { sha: auth } } }, true, true)
+  check('push', { ref: 'refs/heads/main', before: lastDocs, after: auth }, true, true)
+  check('push', { ref: 'refs/heads/main', before: zeroId, after: auth }, true, true)
+  check('push', { ref: 'refs/heads/main', before: 'a'.repeat(40), after: auth }, true, true)
+  check('workflow_dispatch', {}, true, true)
+  const account = commitFile(cwd, 'src/PocketLedger.Infrastructure/Expenses/CurrentAccount.cs', 'class CurrentAccount {}\n')
+  check('pull_request', { pull_request: { base: { sha: auth }, head: { sha: account } } }, true, true)
+  check('push', { ref: 'refs/heads/main', before: auth, after: account }, true, true)
   assert.notEqual(classify('pull_request', { pull_request: { base: { sha: 'invalid' }, head: { sha: docs } } }).status, 0)
 })
 
@@ -172,7 +181,7 @@ test('CI always reports hygiene and stable checks while gating expensive jobs an
   assert.match(jobs['authentication-e2e'], /realm-baseline: \[current, phase1\]/)
   assert.match(jobs['authentication-e2e'], /^    if: needs.hygiene.outputs.run_application_checks == 'true' \|\| github.event_name == 'pull_request'$/m)
   for (const step of jobs['authentication-e2e'].split(/^      - /m).slice(1)) {
-    assert.match(step, /if: needs.hygiene.outputs.run_application_checks == '(?:true|false)'/)
+    assert.match(step, /if: env.RUN_AUTHENTICATION_E2E == '(?:true|false)'/)
   }
 })
 

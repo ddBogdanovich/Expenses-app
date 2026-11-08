@@ -21,7 +21,7 @@ For Playwright MCP inspection, use `E2E_INSPECT=1 npm --prefix tests/PocketLedge
 
 ## Phase 2 registration and retained-realm upgrades
 
-The default run imports current versioned policy. Repeat with `E2E_REALM_BASELINE=phase1 npm --prefix tests/PocketLedger.E2E test` to import the retained Phase 1 fixture (from `78fec1b`) and upgrade it through the same `configure-keycloak.mjs` used by Aspire. CI runs both modes. Each runs reconciliation twice, then proves the pre-existing seeded user's password and subject still work. No developer services are involved.
+The default run imports current versioned policy. Repeat with `E2E_REALM_BASELINE=phase1 npm --prefix tests/PocketLedger.E2E test` to import the retained Phase 1 fixture (from `78fec1b`) and upgrade it through the same `configure-keycloak.mjs` used by Aspire. The default mode retains the full 31-test suite. The `phase1` mode selects only `upgrade.spec.ts`: two browser tests prove that seeded credentials and subject survive reconciliation, local account mapping stays stable, and a newly registered user can return with the same identity. Each harness run reconciles twice before browser login. CI runs this upgrade smoke only for identity/integration changes; unrelated PRs keep its check context through a success notice. No developer services are involved.
 
 The registration suite retains a real OIDC transaction (state/nonce/PKCE) and opens Keycloak's supported `/protocol/openid-connect/registrations` endpoint. It submits email/password only, confirms creation, and continues through the real callback. It bypasses browser constraints for server-policy lengths 11/12/128/129 and covers trimmed/case variants, duplicate/concurrent registration, winning/rejected credentials, and owner-filtered CRUD/totals for two users. The harness-only `/identity-count` control counts exact normalized-email matches using authenticated administration; it never authenticates the application user.
 
@@ -55,7 +55,7 @@ To start with the committed user-free realm, after the dependency/provider/theme
 E2E_USER_FREE=1 npm --prefix tests/PocketLedger.E2E test persistence.spec.ts
 ```
 
-This focused run imports no seeded users; both users must self-register. `E2E_USER_FREE` is for this focused setup test, since other retained tests intentionally require the seeded disposable account. For clean-checkout evidence, run preparation and this command from a fresh checkout/archive of the implementation revision, with no copied `.artifacts`, dependencies, credentials or build outputs. The normal full suite and retained-realm upgrade suite also include the persistence scenario:
+This focused run imports no seeded users; both users must self-register. `E2E_USER_FREE` is for this focused setup test, since other retained tests intentionally require the seeded disposable account. For clean-checkout evidence, run preparation and this command from a fresh checkout/archive of the implementation revision, with no copied `.artifacts`, dependencies, credentials or build outputs. The normal full suite includes the persistence scenario. The retained-realm mode now runs only the focused upgrade smoke (see ADR 0023):
 
 ```sh
 npm --prefix tests/PocketLedger.E2E test

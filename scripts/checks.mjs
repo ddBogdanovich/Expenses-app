@@ -40,19 +40,43 @@ export function pushedCommits(input, cwd) {
   return [...commits]
 }
 
-function ciRequiresApplicationChecks(eventName, event, cwd) {
+function affectsIdentityUpgrade(file) {
+  if (file === 'src/PocketLedger.Infrastructure/Expenses/CurrentAccount.cs') return true
+  return /^(?:infra\/keycloak\/|PocketLedger\.AppHost\/|tests\/PocketLedger\.(?:E2E|Api\.Tests)\/|\.github\/)/.test(file)
+    || /^src\/PocketLedger\.(?:Api|ServiceDefaults)\//.test(file)
+    || /^src\/PocketLedger\.(?:Domain\/Accounts|UseCases\/(?:Authentication|Common)|Infrastructure\/(?:Authentication|Persistence))\//.test(file)
+    || /^src\/PocketLedger\.Web\//.test(file)
+    || /^scripts\/(?:configure-keycloak|build-keycloak|checks)/.test(file)
+    || /(?:\.(?:csproj|props|targets|slnx)$|^global\.json$|^\.editorconfig$|^package(?:-lock)?\.json$)/.test(file)
+    || /^src\/PocketLedger\.(?:UseCases|Infrastructure)\/[^/]+\.cs$/.test(file)
+}
+
+function ciScope(eventName, event, cwd) {
+  const full = { application: true, upgrade: true }
+  let base
+  let head
+  let range
   if (eventName === 'push') {
-    // Feature pushes already receive hygiene; PRs are the pre-merge build gate.
-    return event.ref === 'refs/heads/main' || !event.ref?.startsWith('refs/heads/')
-  }
-  if (eventName === 'pull_request') {
-    const base = event.pull_request?.base?.sha
-    const head = event.pull_request?.head?.sha
+    if (event.ref?.startsWith('refs/heads/') && event.ref !== 'refs/heads/main') {
+      return { application: false, upgrade: false }
+    }
+    if (event.ref !== 'refs/heads/main') return full
+    base = event.before
+    head = event.after
+    range = '..'
+  } else if (eventName === 'pull_request') {
+    base = event.pull_request?.base?.sha
+    head = event.pull_request?.head?.sha
+    range = '...'
     if (![base, head].every(id => /^[a-f0-9]{40,64}$/.test(id ?? ''))) throw new Error('Invalid pull-request commit IDs.')
-    if ([base, head].some(id => spawnSync('git', ['cat-file', '-e', `${id}^{commit}`], { cwd, stdio: 'ignore' }).status !== 0)) return true
-    return !onlyDocsMarkdown(paths(git(['diff', '--name-only', '--no-renames', '-z', `${base}...${head}`, '--'], cwd)))
+  } else return full
+  if (![base, head].every(id => /^[a-f0-9]{40,64}$/.test(id ?? '') && !zeroObjectId.test(id))) return full
+  if ([base, head].some(id => spawnSync('git', ['cat-file', '-e', `${id}^{commit}`], { cwd, stdio: 'ignore' }).status !== 0)) return full
+  const files = paths(git(['diff', '--name-only', '--no-renames', '-z', `${base}${range}${head}`, '--'], cwd))
+  return {
+    application: eventName === 'push' || !onlyDocsMarkdown(files),
+    upgrade: files.some(affectsIdentityUpgrade),
   }
-  return true
 }
 
 function run(command, args, cwd) {
@@ -143,7 +167,8 @@ export function main(mode, cwd = process.cwd(), input = '') {
     case 'ci-scope': {
       if (!process.env.GITHUB_EVENT_PATH) throw new Error('GITHUB_EVENT_PATH is required for CI scope selection.')
       const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
-      console.log(`run_application_checks=${ciRequiresApplicationChecks(process.env.GITHUB_EVENT_NAME, event, cwd)}`)
+      const scope = ciScope(process.env.GITHUB_EVENT_NAME, event, cwd)
+      console.log(`run_application_checks=${scope.application}\nrun_upgrade_checks=${scope.upgrade}`)
       break
     }
     default:
