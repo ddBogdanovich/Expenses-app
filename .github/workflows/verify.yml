@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       run_application_checks: ${{ steps.scope.outputs.run_application_checks }}
+      run_upgrade_checks: ${{ steps.scope.outputs.run_upgrade_checks }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -110,17 +111,18 @@ jobs:
         realm-baseline: [current, phase1]
     env:
       E2E_REALM_BASELINE: ${{ matrix.realm-baseline }}
+      RUN_AUTHENTICATION_E2E: ${{ (matrix.realm-baseline == 'current' && needs.hygiene.outputs.run_application_checks == 'true') || (matrix.realm-baseline == 'phase1' && needs.hygiene.outputs.run_upgrade_checks == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       # Docs-only PRs keep both required contexts; feature pushes need no runners.
-      - name: Application checks not required
-        if: needs.hygiene.outputs.run_application_checks == 'false'
-        run: echo "Hygiene-only event; authentication E2E is not required."
+      - name: Authentication suite not required
+        if: env.RUN_AUTHENTICATION_E2E == 'false'
+        run: echo "No relevant changes for this authentication suite."
       - uses: actions/checkout@v7
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - uses: actions/setup-node@v7
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
         with:
           node-version: '24'
           cache: npm
@@ -128,18 +130,18 @@ jobs:
             src/PocketLedger.Web/package-lock.json
             tests/PocketLedger.E2E/package-lock.json
       - uses: actions/setup-dotnet@v6
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
         with:
           global-json-file: global.json
       - run: npm --prefix src/PocketLedger.Web ci
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - run: npm --prefix tests/PocketLedger.E2E ci
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - run: npx --prefix tests/PocketLedger.E2E playwright install --with-deps chromium
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - run: npm run build:keycloak-provider
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - run: npm run build:keycloak-theme
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'
       - run: npm --prefix tests/PocketLedger.E2E test
-        if: needs.hygiene.outputs.run_application_checks == 'true'
+        if: env.RUN_AUTHENTICATION_E2E == 'true'

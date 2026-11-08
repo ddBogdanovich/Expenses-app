@@ -2,6 +2,8 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './specs',
+  testMatch: process.env.E2E_REALM_BASELINE === 'phase1' ? '**/upgrade.spec.ts' : '**/*.spec.ts',
+  testIgnore: process.env.E2E_REALM_BASELINE === 'phase1' ? [] : ['**/upgrade.spec.ts'],
   outputDir: '../../output/playwright/e2e',
   timeout: 60_000,
   expect: { timeout: 10_000 },

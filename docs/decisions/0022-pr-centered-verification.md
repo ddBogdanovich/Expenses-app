@@ -1,6 +1,6 @@
 # ADR 0022: Use PRs as the pre-merge application verification gate
 
-- Status: Accepted
+- Status: Accepted; authentication matrix scope refined by [ADR 0023](0023-focused-identity-upgrade-acceptance.md).
 - Date: 2026-11-08
 - Supersedes automatic heavy local pre-push validation from [ADR 0018](0018-coverage-regression-gate.md), and push/CI event selection from [ADR 0021](0021-docs-markdown-check-exclusion.md). Pre-commit protections, exact coverage comparisons, and full application suites remain.
 
