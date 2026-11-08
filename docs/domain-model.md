@@ -15,12 +15,12 @@ It records other expenses too, but only qualifying expenses affect that allowanc
 | Opening carryover | An optional signed amount applied when the budget plan starts. |
 | Qualifying expense | An expense that reduces the rolling everyday allowance. Food and household purchases qualify by default. |
 | Non-qualifying expense | A recorded expense that remains visible but does not reduce the allowance. |
-| Daily spending | Sum of all the account’s expenses with a purchase date equal to today in Warsaw, including non-qualifying purchases. An empty day totals zero. |
+| Daily spending | Sum of all the account’s expenses with a purchase date equal to today in the account’s saved time zone, including non-qualifying purchases. An empty day totals zero. |
 | Available allowance | Opening carryover plus allowance earned through a date, minus qualifying expenses through that date. |
 | Closing allowance | The available allowance at the end of a selected date. It may be negative. |
 | Allowance period | A date range during which one daily allowance rate applies. |
 
-`Europe/Warsaw` defines calendar dates. Money is PLN and is stored as integer grosz.
+`Europe/Warsaw` is the initial account time-zone preference. The saved regional zone defines current business dates; a recorded purchase date never shifts. Money remains PLN and is stored as integer grosz in Phase 1. Currency editing and multi-currency storage are planned later phases.
 
 ## Core rule
 
@@ -74,8 +74,14 @@ Infrastructure owns OIDC/session mechanics, protected PostgreSQL tickets, antifo
 
 ## Expense aggregate boundary
 
-`Expense` is an entity and the root of its own small aggregate: one purchase is saved independently. Its ID and owner ID remain stable when purchase details change. A valid expense has a positive `Money` amount, a non-default purchase date no later than the current Warsaw date, a nonblank free-text category (trimmed on write), an optional note, and an explicit allowance classification. Food and household categories ordinarily qualify, but this backend contract requires the caller to choose the flag; no automatic category classification is implemented.
+`Expense` is an entity and the root of its own small aggregate: one purchase is saved independently. Its ID and owner ID remain stable when purchase details change. A valid expense has a positive `Money` amount, a non-default purchase date no later than the captured account-local date for creation or explicit date changes, a nonblank free-text category (trimmed on write), an optional note, and an explicit allowance classification. Food and household categories ordinarily qualify, but this backend contract requires the caller to choose the flag; no automatic category classification is implemented.
 
-`TryCreate` and `TryUpdate` enforce these invariants without depending on a clock or framework. Handlers supply today's date through `IBusinessCalendar`; invalid updates change no fields. Backdating across month/year boundaries is allowed. Expense changes are persisted, but later allowance recalculation awaits the budget feature.
+`TryCreate` and `TryUpdate` enforce these invariants without depending on a clock or framework. Handlers capture preferences and one business instant through `IAccountContextReader`; the stateless `IBusinessCalendar` converts the explicit zone. Invalid updates change no fields. An unchanged stored date remains valid for non-date corrections even when a zone change makes it locally future. Backdating across month/year boundaries is allowed. Expense changes are persisted, but later allowance recalculation awaits the budget feature.
 
 API ownership derives exclusively from the authenticated local account ID: the cookie session’s resolved external identity. Reads and aggregate loading filter by owner; owner ID is included in write predicates and enforced by a database foreign key. Foreign and missing expense IDs both produce 404. Category and note currently use PostgreSQL text without product-specific length limits. Read projections return only purchase fields and ID; pagination and revision history are not implemented.
+
+## Financial preferences boundary
+
+`AccountPreferences` is an independent aggregate referenced by local owner ID, outside credential/identity administration. All retained/new accounts start with PLN, Europe/Warsaw, empty recent usage and revision zero. A Settings zone change advances a checked revision, changes no currency intent, and never writes expenses. Authenticated updates require the last observed revision; stale updates return Conflict. The server catalogue supplies supported regional IANA identifiers and seasonal rules. An unavailable saved zone is retained and must be repaired explicitly in Settings.
+
+The daily summary captures one date/zone/default/revision context and returns independent currency-labelled minor-unit totals, currently PLN only. Empty days return a zero entry in the captured default; unavailable data is never represented as zero. Multi-currency money and remembered selection behavior remain later phases. See [ADR 0024](decisions/0024-account-time-zone-and-summary-context.md).

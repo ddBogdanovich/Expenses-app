@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PocketLedger.Domain.Accounts;
+using PocketLedger.Domain.Preferences;
 using PocketLedger.Infrastructure.Persistence;
 
 namespace PocketLedger.Infrastructure.Authentication;
@@ -15,6 +16,7 @@ internal sealed class UserAccountRepository(ExpensesDbContext context) : IUserAc
     public async Task<bool> TryAddAsync(UserAccount account, CancellationToken cancellationToken)
     {
         context.Add(account);
+        context.Add(AccountPreferences.Create(account.Id));
         try
         {
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

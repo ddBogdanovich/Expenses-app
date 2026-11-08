@@ -77,7 +77,7 @@ test('clean setup and full stack restart preserve two new identities, credential
       expect(own.status()).toBe(200)
       expect(await own.json()).toEqual(expenses[index])
       expect(await (await owner.request.get('/api/expenses')).json()).toEqual([expenses[index]])
-      expect((await (await owner.request.get('/api/expenses/today')).json()).totalGrosz).toBe(String(purchases[index].amountGrosz))
+      expect((await (await owner.request.get('/api/expenses/today')).json()).totals[0].amountMinorUnits).toBe(String(purchases[index].amountGrosz))
       const foreign = `/api/expenses/${expenses[1 - index].id}`
       const csrf = await (await owner.request.get('/api/auth/preview/antiforgery')).json()
       const headers = { 'X-CSRF-TOKEN': csrf.requestToken }

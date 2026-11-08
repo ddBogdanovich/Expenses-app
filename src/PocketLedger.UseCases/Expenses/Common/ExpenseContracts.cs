@@ -27,10 +27,10 @@ public interface IExpenseQueries
     Task<IReadOnlyList<ExpenseResponse>> ListAsync(Guid ownerId, CancellationToken cancellationToken);
 }
 
-/// <summary>The current Warsaw business date, separate from server-local time.</summary>
+/// <summary>Converts an explicit instant into a saved regional calendar date.</summary>
 public interface IBusinessCalendar
 {
-    DateOnly Today { get; }
+    DateOnly TodayIn(string timeZone, DateTimeOffset instant);
 }
 
 internal static class ExpenseErrors

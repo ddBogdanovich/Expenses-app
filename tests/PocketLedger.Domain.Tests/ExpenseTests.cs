@@ -58,6 +58,19 @@ public sealed class ExpenseTests
     }
 
     [Fact]
+    public void UnchangedLocallyFutureDateAllowsNonDateCorrectionButNewFutureDatesDoNot()
+    {
+        var recorded = new DateOnly(2026, 11, 8);
+        var localToday = recorded.AddDays(-1);
+        Assert.True(Expense.TryCreate(Guid.NewGuid(), new Money(100), recorded, "Food", null, true, recorded, out var expense));
+        Assert.True(expense.TryUpdate(new Money(200), recorded, "Transport", "Corrected", false, localToday));
+        Assert.Equal(recorded, expense.PurchaseDate);
+        Assert.False(expense.TryUpdate(new Money(300), recorded.AddDays(1), "Food", null, true, localToday));
+        Assert.Equal(new Money(200), expense.Amount);
+        Assert.False(Expense.TryCreate(expense.OwnerId, new Money(100), recorded, "Food", null, true, localToday, out _));
+    }
+
+    [Fact]
     public void LargestRepresentableAmountIsPreservedExactly()
     {
         var today = new DateOnly(2026, 11, 1);

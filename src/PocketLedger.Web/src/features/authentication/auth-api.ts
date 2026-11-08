@@ -10,14 +10,14 @@ export function hostedEntry(mode: AuthMode = 'login', destination: Destination =
   return `/api/auth/preview/start?${query}`
 }
 
-export async function getSessionStatus(signal: AbortSignal): Promise<'authorized' | 'unauthorized'> {
+export async function getSessionStatus(signal: AbortSignal): Promise<{ accountId: string } | 'unauthorized'> {
   const response = await fetch('/api/auth/me', { headers: sessionHeaders, credentials: 'same-origin', cache: 'no-store', signal })
   if (response.status === 401 || response.status === 403) return 'unauthorized'
   if (response.status !== 200) throw new Error('Unable to verify session')
   const body: unknown = await response.json()
   if (typeof body !== 'object' || body === null || !('accountId' in body) ||
       typeof body.accountId !== 'string' || !body.accountId) throw new Error('Invalid session')
-  return 'authorized'
+  return { accountId: body.accountId }
 }
 
 export async function submitLogout() {

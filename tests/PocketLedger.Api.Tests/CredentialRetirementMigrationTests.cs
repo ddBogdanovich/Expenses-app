@@ -38,7 +38,8 @@ public sealed class CredentialRetirementMigrationTests(AuthenticationDatabase da
             }
 
             await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"BrowserSessions\" (\"Id\", \"ProtectedTicket\", \"ExpiresUtc\") VALUES ({"retained-ticket"}, {ticketBytes}, {ticketExpiry})");
-            await migrator.MigrateAsync();
+            // Assert this irreversible migration at its own boundary before later additive migrations.
+            await migrator.MigrateAsync("20261107224636_RetireLocalPasswordVerifiers");
             var owners = await context.Set<UserAccount>().AsNoTracking().ToListAsync();
             Assert.Equal(2, owners.Count);
             Assert.Null(owners.Single(owner => owner.Id == legacyId).ExternalIdentity);
@@ -55,6 +56,7 @@ public sealed class CredentialRetirementMigrationTests(AuthenticationDatabase da
             Assert.Equal(applied, await context.Database.GetAppliedMigrationsAsync());
             Assert.Equal(2, await context.Set<UserAccount>().CountAsync());
             Assert.Equal(0, await context.Database.SqlQuery<int>($"SELECT count(*)::int AS \"Value\" FROM information_schema.columns WHERE table_name = 'UserAccounts' AND column_name = 'PasswordHash'").SingleAsync());
+            await migrator.MigrateAsync();
         }
 
         using var application = database.CreateApplication();

@@ -14,3 +14,21 @@ Accept: application/json
 # Browser login starts through the Vite /api proxy at /api/auth/preview/start?returnUrl=%2F.
 # Follow the hosted form in a browser; do not submit passwords to this API.
 # Former POST /api/auth/register and /api/auth/login endpoints return 404.
+
+###
+
+# These return 401 without a protected browser cookie; never paste real cookies into this file.
+GET {{PocketLedger.Api_HostAddress}}/api/preferences
+Accept: application/json
+
+###
+
+GET {{PocketLedger.Api_HostAddress}}/api/preferences/time-zones
+Accept: application/json
+
+###
+
+# Daily context includes timeZone, preferencesRevision, defaultCurrency, hasExpenses and totals.
+# Example total entry: {"currency":"PLN","amountMinorUnits":"4237"}.
+GET {{PocketLedger.Api_HostAddress}}/api/expenses/today
+Accept: application/json

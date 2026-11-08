@@ -11,6 +11,7 @@ public sealed class ExpensesDbContext(DbContextOptions<ExpensesDbContext> option
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new UserAccountConfiguration());
         modelBuilder.ApplyConfiguration(new ExpenseConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountPreferencesConfiguration());
         modelBuilder.Entity<BrowserSession>(session =>
         {
             session.ToTable("BrowserSessions");

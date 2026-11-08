@@ -14,9 +14,10 @@ const swatches = [
 
 const exampleDate = '2026-11-02'
 const summaryExamples = {
-  spending: { purchaseDate: exampleDate, totalGrosz: '4237' },
-  empty: { purchaseDate: exampleDate, totalGrosz: '0' },
-  large: { purchaseDate: exampleDate, totalGrosz: '9223372036854775808' },
+  spending: { purchaseDate: exampleDate, timeZone: 'Europe/Warsaw', preferencesRevision: '0', defaultCurrency: 'PLN', hasExpenses: true, totals: [{ currency: 'PLN', amountMinorUnits: '4237' }] },
+  mixed: { purchaseDate: exampleDate, timeZone: 'America/Los_Angeles', preferencesRevision: '7', defaultCurrency: 'EUR', hasExpenses: true, totals: [{ currency: 'PLN', amountMinorUnits: '1000' }, { currency: 'BYN', amountMinorUnits: '1234' }, { currency: 'USD', amountMinorUnits: '5678' }, { currency: 'EUR', amountMinorUnits: '500' }] },
+  empty: { purchaseDate: exampleDate, timeZone: 'Europe/Warsaw', preferencesRevision: '0', defaultCurrency: 'PLN', hasExpenses: false, totals: [{ currency: 'PLN', amountMinorUnits: '0' }] },
+  large: { purchaseDate: exampleDate, timeZone: 'Europe/Warsaw', preferencesRevision: '0', defaultCurrency: 'PLN', hasExpenses: true, totals: [{ currency: 'PLN', amountMinorUnits: '9223372036854775808' }] },
 } as const
 
 type SummaryExample = keyof typeof summaryExamples | 'loading' | 'error'
@@ -128,7 +129,7 @@ export default function DesignSystemPage({ onBack, onEndSession }: Props) {
           <h2 id="spending-heading">Spending summary</h2>
           <p>Spending is a recorded total. Loading and errors never appear as zero. These dated examples do not represent an available allowance.</p>
           <div className="reference-actions" role="group" aria-label="Spending example state">
-            {(['spending', 'empty', 'large', 'loading', 'error'] as const).map(state => <Button key={state} variant="outline" aria-pressed={summaryExample === state} onPress={() => setSummaryExample(state)}>{state === 'large' ? 'Large amount' : state === 'empty' ? 'Empty day' : state === 'spending' ? 'Spending' : state === 'loading' ? 'Loading' : 'Error'}</Button>)}
+            {(['spending', 'mixed', 'empty', 'large', 'loading', 'error'] as const).map(state => <Button key={state} variant="outline" aria-pressed={summaryExample === state} onPress={() => setSummaryExample(state)}>{state === 'mixed' ? 'Separate currencies' : state === 'large' ? 'Large amount' : state === 'empty' ? 'Empty day' : state === 'spending' ? 'Spending' : state === 'loading' ? 'Loading' : 'Error'}</Button>)}
           </div>
           <div className="reference-summary"><SpendingSummary state={summaryState} /></div>
         </section>

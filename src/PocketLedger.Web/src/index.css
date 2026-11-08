@@ -107,3 +107,59 @@ main:focus, .today-main h1:focus, .account-card h1:focus, .account-card [data-fo
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.settings-main > .daily-note {
+  margin-bottom: var(--space-6);
+}
+
+.settings-card {
+  min-width: 0;
+}
+
+.settings-card .combo-box,
+.settings-card .combo-box__input-group {
+  width: 100%;
+  min-width: 0;
+}
+
+.settings-card .ledger-input {
+  min-width: 0;
+}
+
+.settings-card [tabindex="-1"]:focus {
+  outline: none;
+}
+
+.summary-date {
+  overflow-wrap: anywhere;
+}
+
+.settings-card .combo-box__trigger {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+}
+
+.settings-card .primary-action {
+  justify-content: center;
+}
+
+@media (max-width: 760px), (max-width: 1024px) and (max-height: 540px) {
+  .settings-card {
+    padding: var(--space-7) var(--compact-card-padding);
+  }
+}
+
+.settings-zones [role="option"] {
+  min-height: var(--touch-target);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.settings-card .combo-box__input-group .ledger-input {
+  padding-inline-end: calc(var(--touch-target) + var(--space-2));
+}
+
+.zone-selection {
+  display: block;
+  overflow-wrap: anywhere;
+}
