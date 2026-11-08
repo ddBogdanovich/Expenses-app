@@ -1,6 +1,6 @@
 # ADR 0018: Measure coverage and reject regressions before push
 
-- Status: Accepted; docs-only/new-branch check selection and unconditional CI application jobs are superseded by [ADR 0021](0021-docs-markdown-check-exclusion.md).
+- Status: Accepted; docs-only selection is superseded by [ADR 0021](0021-docs-markdown-check-exclusion.md), and automatic local pre-push coverage plus CI event selection by [ADR 0022](0022-pr-centered-verification.md). Exact coverage comparison rules remain.
 - Date: 2026-11-07
 - Supersedes ADR 0012's Docker-free pre-push test policy; retains its Lefthook/staging/CI architecture.
 

@@ -2,13 +2,13 @@
 
 ## The problem in PocketLedger
 
-A successful frontend build cannot detect a C# compiler error, and a successful domain test cannot detect a broken login form. Running PostgreSQL containers for every tiny commit would interrupt daily work. PocketLedger therefore checks different things at different stages.
+A frontend build cannot detect a C# error, and a domain test cannot detect a broken login form. Full backend/coverage/E2E checks are valuable, but running them locally and again for both push and PR events duplicates work and slows publishing progress. PocketLedger keeps inexpensive hygiene at the push boundary and uses the PR as the authoritative pre-merge application gate.
 
-A **Git hook** is a local program Git runs before an operation. A nonzero exit code stops that operation. **Continuous integration (CI)** runs verification on a hosted runner after a push or for a pull request, using the committed revision rather than the developer's working tree. Local hooks provide early feedback; CI provides repeatable shared evidence.
+A **Git hook** is a local program Git runs before an operation. A nonzero exit code stops it. **Continuous integration (CI)** verifies committed revisions on GitHub. This policy is recorded in [ADR 0022](../decisions/0022-pr-centered-verification.md); [ADR 0012](../decisions/0012-git-hooks-and-continuous-integration.md), [ADR 0018](../decisions/0018-coverage-regression-gate.md), and [ADR 0021](../decisions/0021-docs-markdown-check-exclusion.md) retain the earlier decisions and their supersession links.
 
 ## Install once per clone
 
-Use Node.js 24 LTS, npm, the .NET SDK selected by `global.json`, Git, and `tar` (available on standard macOS/Linux and current Windows installations). Run from the repository root:
+Use Node.js 24 LTS, npm, Git, and `tar`. The selected .NET SDK remains necessary for backend development and C# pre-commit formatting; Docker is necessary for full API/E2E/coverage verification, not for pre-push hygiene.
 
 ```sh
 npm ci
@@ -17,57 +17,51 @@ npm --prefix src/PocketLedger.Web ci
 dotnet restore PocketLedger.slnx
 ```
 
-The private root `package.json` installs Lefthook, not application dependencies. The frontend keeps its own package and lockfile. The explicit installation command works even when npm disables dependency lifecycle scripts. Gitleaks is downloaded from its official GitHub release, checked against the pinned SHA-256, and stored in ignored `.tools/`. Rerunning the command reuses the installed version. Hook configuration is read on every run; reinstall after changing hook names or upgrading tools. Git and Node/.NET must also be available to GUI clients. Hooks do not fetch missing tools at commit time.
-
-Installation requires network access; hooks use installed tools. C# pre-commit formatting assumes the solution has been restored. Pre-push coverage fetches fresh main and installs locked dependencies in temporary source snapshots, requiring network access. Relevant backend pushes now require Docker for full API coverage; see [ADR 0018](../decisions/0018-coverage-regression-gate.md).
+The root npm package pins Lefthook and the frontend keeps its own lockfile. `hooks:install` downloads checksum-verified Gitleaks into ignored `.tools/` and installs hooks. It reuses the pinned version on subsequent runs. Missing hygiene tools fail with setup instructions; hooks do not silently install dependencies. Git/Node and applicable language tools must be available to GUI Git clients too.
 
 ## What runs
 
-| Stage | Checks | Scope and cost |
-| --- | --- | --- |
-| Pre-commit | Gitleaks; Git whitespace and conflict markers; relevant frontend/C# checks | Docs-only Markdown keeps hygiene and does not load language tooling. |
-| Pre-push | Docs-only: exact committed-tree whitespace/conflict checks and reachable-history secrets. Other changes: existing relevant builds/tests/coverage | Proven new docs branches also use the lightweight path. Unknown/mixed branches retain normal selection; backend coverage requires Docker. |
-| GitHub Actions | Hygiene always; application tests/builds/coverage only for non-docs-only event changes | Workflow and required-check names remain present. API tests use disposable PostgreSQL when application checks run. |
+| Stage/event | Work |
+| --- | --- |
+| Local pre-commit | Staged secrets, whitespace/conflict markers, relevant frontend lint and C# whitespace formatting |
+| Local pre-push, any branch/path | Redacted secrets and whitespace/conflict checks for every exact non-deleted pushed commit; no builds/tests/coverage |
+| GitHub feature-branch push | Hygiene only; no duplicate application suite |
+| GitHub PR opened/reopened/updated | Full backend/frontend/E2E/coverage, except docs-only PRs get hygiene and lightweight status reporting |
+| GitHub push to main | Full validation of the actual merged revision, even for docs-only changes |
+| Manual application/coverage command | The explicitly requested full checks |
 
-For example, changing `Money.cs` selects C# whitespace verification before commit and backend verification before push. Changing `RegistrationPage.test.tsx` selects frontend linting before commit and all frontend checks before push. Changing `Directory.Packages.props` selects backend verification; changing root hook scripts or `.editorconfig` selects both areas before push. Deleting a source file still selects its area's push checks. Project/linter configuration changes broaden pre-commit checks. Generated EF code follows `dotnet format`'s default generated-code handling; builds and API migration tests remain the broader verification.
+Only lowercase `.md` files under `docs/` qualify for a docs-only PR. Root Markdown, `.mdx`, uppercase `.MD`, non-Markdown docs files, and mixed code/tooling PRs receive full PR validation. A docs-only latest commit does not turn a mixed PR into a docs-only PR. Tags/unknown CI events conservatively request full validation.
 
-Installed third-party files under `.agents/skills/` are excluded only from whitespace checks because their upstream formatting is not maintained here. Secret scanning includes those files. One pre-existing extra blank line at the end of ADR 0001 was removed to establish the maintained-file whitespace baseline.
+## Lightweight local push checks
 
-The backend push build uses `.artifacts/hooks`, leaving a running Aspire API's assemblies alone. It does not execute the Aspire dashboard's `tests` resource. The coverage gate additionally runs full backend suites in independent committed snapshots; there is no in-memory database substitute. Playwright MCP visual validation remains a separate development requirement for UI changes.
+Pre-push reads Git's actual ref protocol. It validates commit IDs and collects every non-deleted local target, deduplicating repeats. It checks those committed trees rather than the working tree or just the checked-out HEAD. First pushes and unavailable remote objects need no baseline or main ancestry: the full committed target is the hygiene subject either way. Multiple refs cannot hide an unchecked target; deletion-only pushes need no checks. With no protocol input, the manual runner checks HEAD.
 
-## Staging is a separate snapshot
+Redacted Gitleaks scans run **before** whitespace diagnostics, because `git diff --check` prints offending lines. A line containing both a credential and trailing whitespace must be rejected/redacted before Git can echo it. Push scanning targets supplied revisions and their reachable history; manual/CI hygiene retains Gitleaks' full-ref scope. Maintained-file whitespace excludes installed third-party `.agents/skills/` sources, but secret scanning includes them.
 
-Git has a working tree (files on disk), an index (the proposed commit), and committed history. With `git add -p`, one file can contain staged and unstaged edits. Checking its filename alone would normally let the linter see both.
+Pre-push does not run .NET/npm builds, tests, coverage, package installation, Docker, or baseline fetches. It does not execute the dashboard test resource. Removing expensive push checks does not remove the requirement to test while implementing a feature; it moves the automatic shared gate to PR CI.
 
-Lefthook 2.2.2 temporarily saves and hides the unstaged portion of partially staged files, runs checks, and restores that portion. Our checks do not automatically fix or stage anything. Regression tests exercise the real manager on both passing and failing checks and compare the index and working file afterwards. Unrelated unstaged files are still visible to project-level tools, so pre-commit is not an isolated build of the index.
+## Partial staging remains protected
 
-Pre-push uses a Lefthook script job so the manager does not filter it using the checked-out branch's upstream before our code reads the actual pushed refs. Its tiny shell wrapper delegates to the shared Node runner. `.gitattributes` keeps shell wrappers in LF format even with Windows `core.autocrlf=true`; a regression test checks this checkout behavior.
+Git has a working tree, index, and committed history. A partially staged file has different content in the first two. Lefthook temporarily hides unstaged portions of partially staged files, runs pre-commit, and restores them after success/failure. Checks never automatically fix or stage source. Regression tests use the real manager and verify both snapshots remain intact; unrelated unstaged files can still be visible to project-level tools.
 
-Pre-push reads every ref Git supplies. A deletion needs no build. For a new branch, a locally known `origin/main` merge base can prove that only `docs/**/*.md` changed; that branch uses hygiene-only checks on its first push too. If the comparison includes anything else, or no usable main ancestry exists, all paths in the pushed tree remain the conservative fallback. A nonzero but unavailable remote commit also retains that fallback. Multiple pushed refs are combined, so a docs-only ref cannot exempt a simultaneous source push. Local builds still inspect the current working tree, including unrelated edits. The coverage gate separately archives and tests every relevant exact pushed commit; docs-only hygiene separately checks the actual pushed revisions, not merely the checked-out HEAD.
+The pre-push Lefthook script job forwards Git's protocol without filtering by the checkout's upstream. Its shell wrapper uses LF even with Windows autocrlf. Tests retain protocol, deletion, multi-ref, spaced-path, partial-staging, and secret-redaction coverage in temporary repositories.
 
-## Documentation-only fast path
+## CI selection and check statuses
 
-The owner selected a lightweight policy for Markdown under `docs/`, recorded in [ADR 0021](../decisions/0021-docs-markdown-check-exclusion.md). A nonempty staged/pushed path set must consist entirely of lowercase `.md` paths inside that directory. Additions, edits, deletions, and moves within docs qualify. Rename detection is disabled so moving source into docs or docs into source exposes both paths and cannot inherit the fast path.
+Verify always starts for push/pull_request and its hygiene job always scans secrets and committed whitespace. `node scripts/checks.mjs ci-scope` emits a `run_application_checks` job output:
 
-Pre-commit still scans staged secrets and rejects introduced whitespace/conflict markers; it then returns before language tooling. Docs-only pre-push runs redacted Gitleaks on the pushed revisions' reachable history before checking each exact pushed tree's maintained-file whitespace/conflict markers. The order matters: Git whitespace diagnostics print offending lines, so secrets must be rejected before those diagnostics can echo them. Manual/CI hygiene uses the same ordering. A missing scanner fails with setup instructions, including for docs. The scanner's log options contain validated commit IDs, so pushing another branch cannot accidentally scan only the current checkout. No application build/test/coverage command runs on this path.
+- Push to `refs/heads/main`: true, regardless of changed paths.
+- Push to another branch: false, regardless of changed paths.
+- PR: false only if the complete base/head three-dot diff is a nonempty docs-only Markdown set; otherwise true.
+- Missing PR objects or unrecognized event types: full checks; malformed PR IDs fail closed.
 
-| Changed paths | Local behavior | GitHub push/PR behavior |
-| --- | --- | --- |
-| `docs/prd-example.md` and `docs/learning/example.md` | Secret and whitespace/conflict checks only when the relevant diff is known | Hygiene and lightweight status checks; no application validation |
-| `docs/example.md` plus `src/PocketLedger.Domain/Money.cs` | Normal source/mixed checks | Full workflow |
-| `docs/example.md` plus `README.md` | Normal pre-commit hygiene; normal area selection on push | Full workflow |
-| `docs/diagram.svg`, `docs/example.mdx`, or `docs/example.MD` | Normal checks | Full workflow |
-| New docs branch with unknown main ancestry | Conservative full-tree selection | CI likewise selects full checks if scope cannot be established |
+The PR suite normally tests GitHub's proposed merge candidate. GitHub automatically reruns it when the PR's head is updated, so a second heavy feature-push run adds little value here. The full main run validates the actual post-merge revision. See [GitHub's PR event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 
-Mixed commits retain hygiene over the whole staged change, including docs. Explicit manual hygiene/coverage commands also retain their full scope. No permanent scanner allowlist is introduced.
+Only full-validation events install root regression dependencies and run root tests plus backend/frontend/coverage and authentication E2E. Main pushes and ordinary PRs retain the existing full suites; scope gating does not weaken their acceptance. Coverage still uses exact counters and independently built committed snapshots, with real disposable API databases.
 
-Verify always starts for pushes and pull requests. After checkout with full history, `node scripts/checks.mjs ci-scope` emits a `run_application_checks` job output. Existing branch pushes use exact before/after IDs; new branches use the conservative selection above. PRs use the complete base/head three-dot diff. Missing objects select full work, malformed events fail, and tags/unknown events conservatively use full checks. No GitHub API file-list truncation or top-level `paths-ignore` is involved. A docs-only push on a mixed code PR can use light push checks while that PR still receives full validation.
+A whole path-skipped workflow can leave required checks Pending, so there is no top-level path filter. [Conditionally skipped jobs report success](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions). Backend/frontend/coverage jobs use the hygiene output. Both authentication matrix jobs expand on docs-only PRs and report only a success notice so their existing `current`/`phase1` contexts remain available. Feature pushes skip the matrix job before expansion to avoid allocating those extra runners. Hosted required-check rules are unchanged; the PR's real application results remain the pre-merge evidence.
 
-The hygiene job always installs the pinned scanner and runs committed-tree/full-history hygiene, preserving Gitleaks' default scan across all Git refs available in that checkout. Docs-only pre-push instead targets the supplied pushed commit IDs. Only non-docs-only events install root test dependencies and run root regressions, then the backend/frontend/coverage jobs. GitHub documents that [conditionally skipped jobs report success](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions). To retain both existing E2E matrix check names explicitly, `current` and `phase1` jobs still expand on docs-only events but run only a success notice; checkout/setup/install/build/test steps are conditional. This small runner cost avoids disappearing matrix contexts or a whole workflow left pending. Hosted branch protection is unchanged.
-
-Regression evidence: five revised/new cases failed against the initial broad exemption and passed after narrowing it. They prove first-push hygiene without application commands, staged/committed rejection of synthetic secrets and whitespace, preserved index/worktree, exact push versus full PR scope, conservative fallbacks, and workflow/matrix gating. Independent review added a combined secret-plus-whitespace case; both docs-only push and manual/CI tests first reproduced raw-line disclosure, then passed after scanning was moved before whitespace diagnostics. A further off-HEAD branch-secret regression failed when manual hygiene was accidentally restricted to HEAD, then passed after its original all-ref scope was restored. Existing deletion, rename-boundary, partial-staging, and mixed-ref tests remain. One test helper initially failed to recognize digits in `authentication-e2e`; its parser was corrected without relaxing policy assertions. Temporary repositories provide Git history; no real commit/push is created solely to test hooks.
-
-## Run checks yourself
+## Run checks deliberately
 
 ```sh
 npm run hooks:check
@@ -77,26 +71,15 @@ npm run check:backend
 npm run check:hygiene
 npm run coverage
 npm run coverage:check
-```
-
-`hooks:check` runs the actual pre-commit hook against the current index, so it does nothing when no files are staged. `npm test` at the root runs hook regression tests; frontend behavior tests remain `npm test` inside `src/PocketLedger.Web`. `check:backend` includes Docker-dependent API tests and full formatting. `check:hygiene` checks the committed tree's whitespace and reachable history for secrets, so uncommitted changes are not included. Gitleaks output is redacted; a finding is a prompt to remove a credential and rotate it if it was real, not to paste it into a log or documentation.
-
-To run the push checks manually against all tracked paths without pushing:
-
-```sh
 node scripts/checks.mjs pre-push < /dev/null
 ```
 
-Git's `--no-verify` can bypass commit/push hooks, and `LEFTHOOK=0` disables Lefthook. Use bypasses deliberately; CI selection is independent and always keeps hygiene. The workflow does not enable branch protection, but retains existing job/matrix check names so required statuses can complete on docs-only events.
+`hooks:check` uses the index and does nothing when it is empty. Root `npm test` runs tooling regressions; frontend tests remain separate. `check:backend` includes full Docker-dependent API tests and formatting. `check:hygiene` scans committed content/history, including refs outside HEAD. `coverage:check` still fetches its baseline and uses isolated source snapshots; it is no longer invoked automatically by pre-push. See [learning note 020](020-coverage-and-regression-gates.md).
 
-## Why these tools, and what they cost
+Git's `--no-verify` and `LEFTHOOK=0` bypass local hooks, but CI runs independently. Branch protection is configured separately. No real commit or push is created solely to test these hooks; temporary repositories provide test history.
 
-Lefthook manages installation and staging safeguards for both languages from one repository-level configuration. Husky plus lint-staged is a reasonable npm-oriented alternative; the pre-commit framework supplies reusable multilingual plugins at the cost of Python tooling. Plain hooks require maintaining those safeguards ourselves. We retain Oxlint and .NET's existing analyzers rather than adding competing linters. Gitleaks adds a pinned native executable to install and update. See [ADR 0012](../decisions/0012-git-hooks-and-continuous-integration.md).
+## Regression evidence and exercise
 
-## Exercise
+Before implementation, three new policy cases failed: source/tooling/new/multi-ref pushes invoked application commands; feature-push CI requested full work; and a source deletion selected builds. They passed after changing local push to hygiene-only and event selection to PR/main. The matrix policy assertion likewise failed before adding the feature-push job gate. Existing synthetic secret/whitespace, secret-before-diagnostics, off-HEAD scanning, PR full-diff, partial-staging, and coverage comparator regressions remain.
 
-In a disposable branch or clone, stage a harmless TypeScript edit, make another unstaged edit in the same file, then run `npm run hooks:check`. Compare the index and working tree before and after; repeat with a staged lint error. Then stage only `docs/example.md`, first clean and then with trailing whitespace, followed by a mixed docs/source change. Which protections still apply to docs? Why must a move from source into docs expose the old path too? Why can a docs-only push and a mixed PR require different scopes?
-
-## Coverage supplement
-
-[Learning note 020](020-coverage-and-regression-gates.md) describes Coverlet/ReportGenerator/V8 reports and the stricter push policy introduced after this original tooling milestone. There is no native Git hook for creating a PR; pre-push is the local gate. Coverage reports survive failed comparisons, while temporary source/dependency trees are removed. Two measured revisions cost more than the original Docker-free push check; behavior/E2E/visual tests remain necessary.
+In a disposable repository, make a source commit and a docs commit, then inspect pre-push output: why should neither build the application? Compare a feature-push event with a PR containing both commits: which requests the full suite? Why should a docs-only main push still run full checks? Add a token-shaped synthetic value on another branch and verify manual hygiene still rejects it without printing it.

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { affectedAreas, pushedFiles } from './checks.mjs'
+import { pushedCommits } from './checks.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const zeroId = '0'.repeat(40)
@@ -48,53 +48,29 @@ function installScanner(cwd) {
   copyFileSync(join(root, directory, executable), join(cwd, directory, executable))
 }
 
-test('documentation skips builds, while shared policies and dependency changes select relevant checks', () => {
-  assert.deepEqual(affectedAreas(['docs/learning/example.md', 'README.md']), { backend: false, frontend: false })
-  assert.deepEqual(affectedAreas(['src/PocketLedger.Web/package-lock.json']), { backend: false, frontend: true })
-  assert.deepEqual(affectedAreas(['Directory.Packages.props']), { backend: true, frontend: false })
-  assert.deepEqual(affectedAreas(['.editorconfig']), { backend: true, frontend: true })
-  assert.deepEqual(affectedAreas(['scripts/checks.mjs']), { backend: true, frontend: true })
-  assert.deepEqual(affectedAreas(['coverage.runsettings']), { backend: true, frontend: true })
-  assert.deepEqual(affectedAreas(['.config/dotnet-tools.json']), { backend: true, frontend: true })
-})
-
-test('push selection handles new branches, deleted refs, multiple refs and filenames containing spaces', t => {
-  const cwd = fixture(t)
-  const first = commitFile(cwd, 'src/PocketLedger.Web/source with spaces.ts', 'export const first = 1\n')
-  const second = commitFile(cwd, 'Directory.Packages.props', '<Project />\n')
-  const update = `refs/heads/main ${second} refs/heads/main ${first}\n`
-  assert.deepEqual(pushedFiles(update, cwd), ['Directory.Packages.props'])
-  const creation = `refs/heads/new ${first} refs/heads/new ${zeroId}\n`
-  assert.deepEqual(pushedFiles(creation, cwd), ['src/PocketLedger.Web/source with spaces.ts'])
-  const deletion = `(delete) ${zeroId} refs/heads/old ${first}\n`
-  assert.deepEqual(pushedFiles(deletion, cwd), [])
-  assert.deepEqual(new Set(pushedFiles(update + creation + deletion, cwd)),
-    new Set(['Directory.Packages.props', 'src/PocketLedger.Web/source with spaces.ts']))
-  const missingRemote = `refs/heads/main ${second} refs/heads/main ${'a'.repeat(40)}\n`
-  assert.deepEqual(new Set(pushedFiles(missingRemote, cwd)), new Set(git(cwd, 'ls-files').split('\n')))
-})
-
-test('new docs-only branches compare with main without selecting the application tree', t => {
+test('all pre-push refs use hygiene only, including code, new branches, unknown remotes, and multiple refs', t => {
   const cwd = fixture(t)
   installScanner(cwd)
-  const base = commitFile(cwd, 'src/PocketLedger.Domain/Money.cs', 'class Money {}\n')
-  git(cwd, 'update-ref', 'refs/remotes/origin/main', base)
-  const docs = commitFile(cwd, 'docs/learning/note with spaces.md', 'a learning note\n')
-  const creation = `refs/heads/docs ${docs} refs/heads/docs ${zeroId}\n`
-  assert.deepEqual(pushedFiles(creation, cwd), ['docs/learning/note with spaces.md'])
-  const dispatch = execute(process.execPath, [join(root, 'scripts/checks.mjs'), 'pre-push'], cwd, { input: creation })
-  assert.equal(dispatch.status, 0, dispatch.stdout + dispatch.stderr)
-  assert.doesNotMatch(dispatch.stdout, /> (?:node|dotnet|npm) /)
-  assert.match(dispatch.stdout, /git diff --check/)
-  assert.match(dispatch.stdout, /gitleaks git/)
-  assert.ok(dispatch.stdout.includes(`--log-opts ${docs}`))
-
-  const code = commitFile(cwd, 'src/PocketLedger.Domain/Money.cs', 'class Money { }\n')
-  const mixed = `refs/heads/mixed ${code} refs/heads/mixed ${zeroId}\n`
-  assert.ok(pushedFiles(mixed, cwd).includes('src/PocketLedger.Domain/Money.cs'))
-  assert.ok(pushedFiles(creation + mixed, cwd).includes('src/PocketLedger.Domain/Money.cs'))
-  const unknown = `refs/heads/docs ${docs} refs/heads/docs ${'a'.repeat(40)}\n`
-  assert.ok(pushedFiles(unknown, cwd).includes('src/PocketLedger.Domain/Money.cs'))
+  const first = commitFile(cwd, 'src/PocketLedger.Domain/Money.cs', 'class Money {}\n')
+  const second = commitFile(cwd, 'docs/note.md', 'a note\n')
+  const third = commitFile(cwd, 'package.json', '{}\n')
+  const creation = `refs/heads/code ${first} refs/heads/code ${zeroId}\n`
+  const update = `refs/heads/docs ${second} refs/heads/docs ${first}\n`
+  const unknown = `refs/heads/tooling ${third} refs/heads/tooling ${'a'.repeat(40)}\n`
+  for (const input of [creation, update, unknown, creation + update + unknown, '']) {
+    const result = execute(process.execPath, [join(root, 'scripts/checks.mjs'), 'pre-push'], cwd, { input })
+    assert.doesNotMatch(result.stdout, /> (?:node|dotnet|npm) /)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.match(result.stdout, /gitleaks git/)
+    assert.match(result.stdout, /git diff --check/)
+    const targets = pushedCommits(input, cwd)
+    assert.ok(result.stdout.includes(`--log-opts ${targets.join(' ')}`))
+    for (const target of targets) assert.ok(result.stdout.includes(` ${target} --`))
+  }
+  const deletion = `(delete) ${zeroId} refs/heads/old ${first}\n`
+  const result = execute(process.execPath, [join(root, 'scripts/checks.mjs'), 'pre-push'], cwd, { input: deletion })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.doesNotMatch(result.stdout, /> /)
 })
 
 test('docs-only pre-commit retains hygiene without language checks or index/worktree changes', t => {
@@ -169,7 +145,10 @@ test('CI classifies complete PR changes and exact push revisions rather than onl
   const lastDocs = commitFile(cwd, 'docs/example.md', 'another note\n')
   check('push', { ref: 'refs/heads/docs', before: code, after: lastDocs }, false)
   check('pull_request', { pull_request: { base: { sha: base }, head: { sha: lastDocs } } }, true)
-  check('push', { ref: 'refs/heads/docs', before: 'a'.repeat(40), after: docs }, true)
+  check('push', { ref: 'refs/heads/docs', before: 'a'.repeat(40), after: docs }, false)
+  check('push', { ref: 'refs/heads/feature', before: base, after: code }, false)
+  check('push', { ref: 'refs/heads/main', before: base, after: docs }, true)
+  check('push', { ref: 'refs/heads/main', before: base, after: code }, true)
   check('push', { ref: 'refs/tags/v1', before: base, after: docs }, true)
   assert.notEqual(classify('pull_request', { pull_request: { base: { sha: 'invalid' }, head: { sha: docs } } }).status, 0)
 })
@@ -191,13 +170,13 @@ test('CI always reports hygiene and stable checks while gating expensive jobs an
     assert.match(jobs[name], /^    if: needs.hygiene.outputs.run_application_checks == 'true'$/m)
   }
   assert.match(jobs['authentication-e2e'], /realm-baseline: \[current, phase1\]/)
-  assert.doesNotMatch(jobs['authentication-e2e'], /^    if:/m)
+  assert.match(jobs['authentication-e2e'], /^    if: needs.hygiene.outputs.run_application_checks == 'true' \|\| github.event_name == 'pull_request'$/m)
   for (const step of jobs['authentication-e2e'].split(/^      - /m).slice(1)) {
     assert.match(step, /if: needs.hygiene.outputs.run_application_checks == '(?:true|false)'/)
   }
 })
 
-test('docs-only pre-push rejects committed whitespace and secrets without application checks', t => {
+test('pre-push rejects committed whitespace and secrets without application checks', t => {
   const syntheticToken = `ghp_${randomBytes(18).toString('hex')}`
   for (const content of ['trailing whitespace  \n', `token = "${syntheticToken}"\n`, `token = "${syntheticToken}"  \n`]) {
     const cwd = fixture(t)
@@ -275,14 +254,19 @@ test('the shell wrapper retains LF in a Windows-style autocrlf checkout', t => {
   assert.match(git(cwd, 'check-attr', 'eol', '--', wrapper), /eol: lf$/)
 })
 
-test('deleting a source file still triggers verification and invalid push input fails', t => {
+test('pre-push validates all refs and checks a committed source deletion without building', t => {
   const cwd = fixture(t)
+  installScanner(cwd)
   const first = commitFile(cwd, 'src/PocketLedger.Domain/Removed.cs', 'class Removed {}\n')
   git(cwd, 'rm', 'src/PocketLedger.Domain/Removed.cs')
   git(cwd, 'commit', '-m', 'Remove fixture')
   const second = git(cwd, 'rev-parse', 'HEAD')
-  assert.equal(affectedAreas(pushedFiles(`refs/heads/main ${second} refs/heads/main ${first}\n`, cwd)).backend, true)
-  assert.throws(() => pushedFiles('malformed\n', cwd), /Invalid Git pre-push/)
+  const input = `refs/heads/main ${second} refs/heads/main ${first}\n`
+  assert.deepEqual(pushedCommits(input, cwd), [second])
+  const result = execute(process.execPath, [join(root, 'scripts/checks.mjs'), 'pre-push'], cwd, { input })
+  assert.doesNotMatch(result.stdout, /> (?:node|dotnet|npm) /)
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.throws(() => pushedCommits('malformed\n', cwd), /Invalid Git pre-push/)
 })
 
 test('Git hygiene checks reject staged whitespace and conflict markers without changing the index', t => {
