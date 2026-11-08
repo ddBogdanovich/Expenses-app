@@ -1,6 +1,6 @@
 # ADR 0012: Use Lefthook for local checks and GitHub Actions for full verification
 
-- Status: Accepted; the Docker-free pre-push test policy is superseded by [ADR 0018](0018-coverage-regression-gate.md).
+- Status: Accepted; the Docker-free pre-push test policy is superseded by [ADR 0018](0018-coverage-regression-gate.md), and docs-only/new-branch check selection and unconditional CI application jobs are superseded by [ADR 0021](0021-docs-markdown-check-exclusion.md).
 - Date: 2026-11-02
 
 ## Context

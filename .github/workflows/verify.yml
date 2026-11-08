@@ -18,6 +18,8 @@ jobs:
   hygiene:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      run_application_checks: ${{ steps.scope.outputs.run_application_checks }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -26,12 +28,18 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - id: scope
+        run: node scripts/checks.mjs ci-scope >> "$GITHUB_OUTPUT"
       - run: npm ci
+        if: steps.scope.outputs.run_application_checks == 'true'
       - run: node scripts/install-gitleaks.mjs
       - run: npm test
+        if: steps.scope.outputs.run_application_checks == 'true'
       - run: npm run check:hygiene
 
   backend:
+    needs: hygiene
+    if: needs.hygiene.outputs.run_application_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -47,6 +55,8 @@ jobs:
       - run: npm run check:backend
 
   frontend:
+    needs: hygiene
+    if: needs.hygiene.outputs.run_application_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -61,6 +71,8 @@ jobs:
       - run: npm run check:frontend
 
   coverage:
+    needs: hygiene
+    if: needs.hygiene.outputs.run_application_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -91,6 +103,7 @@ jobs:
           retention-days: 14
 
   authentication-e2e:
+    needs: hygiene
     strategy:
       matrix:
         realm-baseline: [current, phase1]
@@ -99,8 +112,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Keep both existing matrix check names reporting success for docs-only PRs.
+      - name: Documentation-only change
+        if: needs.hygiene.outputs.run_application_checks == 'false'
+        run: echo "Documentation-only change; authentication E2E is not required."
       - uses: actions/checkout@v7
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - uses: actions/setup-node@v7
+        if: needs.hygiene.outputs.run_application_checks == 'true'
         with:
           node-version: '24'
           cache: npm
@@ -108,11 +127,18 @@ jobs:
             src/PocketLedger.Web/package-lock.json
             tests/PocketLedger.E2E/package-lock.json
       - uses: actions/setup-dotnet@v6
+        if: needs.hygiene.outputs.run_application_checks == 'true'
         with:
           global-json-file: global.json
       - run: npm --prefix src/PocketLedger.Web ci
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - run: npm --prefix tests/PocketLedger.E2E ci
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - run: npx --prefix tests/PocketLedger.E2E playwright install --with-deps chromium
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - run: npm run build:keycloak-provider
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - run: npm run build:keycloak-theme
+        if: needs.hygiene.outputs.run_application_checks == 'true'
       - run: npm --prefix tests/PocketLedger.E2E test
+        if: needs.hygiene.outputs.run_application_checks == 'true'

@@ -21,6 +21,10 @@ function paths(output) {
   return output.split('\0').filter(Boolean)
 }
 
+function onlyDocsMarkdown(files) {
+  return files.length > 0 && files.every(file => /^docs\/.+\.md$/.test(file))
+}
+
 export function affectedAreas(files) {
   const shared = files.some(file => /^(coverage\.runsettings$|\.config\/|scripts\/|\.lefthook\/|\.github\/|package(?:-lock)?\.json$|lefthook\.yml$|\.editorconfig$|\.gitattributes$|\.gitleaks\.toml$)/.test(file))
   return {
@@ -31,7 +35,8 @@ export function affectedAreas(files) {
 }
 
 // Read Git's actual pre-push protocol, including new branches, deletions and multiple refs.
-// If a remote object is unavailable locally, checking every file is the safe fallback.
+// New docs-only branches can use their known main ancestry. Otherwise an unknown
+// remote object still selects every file rather than guessing which checks to skip.
 export function pushedFiles(input, cwd) {
   if (!input.trim()) return paths(git(['ls-files', '-z'], cwd))
   const files = new Set()
@@ -44,9 +49,17 @@ export function pushedFiles(input, cwd) {
     if (zeroObjectId.test(localId)) continue
     const remoteExists = !zeroObjectId.test(remoteId)
       && spawnSync('git', ['cat-file', '-e', `${remoteId}^{commit}`], { cwd, stdio: 'ignore' }).status === 0
-    const changed = remoteExists
-      ? git(['diff', '--name-only', '--no-renames', '-z', remoteId, localId, '--'], cwd)
-      : git(['ls-tree', '-r', '--name-only', '-z', localId], cwd)
+    let changed
+    if (remoteExists) {
+      changed = git(['diff', '--name-only', '--no-renames', '-z', remoteId, localId, '--'], cwd)
+    } else if (zeroObjectId.test(remoteId) && localRef.startsWith('refs/heads/')) {
+      const base = spawnSync('git', ['merge-base', 'refs/remotes/origin/main', localId], { cwd, encoding: 'utf8' })
+      if (base.status === 0) {
+        const candidates = git(['diff', '--name-only', '--no-renames', '-z', base.stdout.trim(), localId, '--'], cwd)
+        if (onlyDocsMarkdown(paths(candidates))) changed = candidates
+      }
+    }
+    changed ??= git(['ls-tree', '-r', '--name-only', '-z', localId], cwd)
     for (const file of paths(changed)) files.add(file)
   }
   return [...files]
@@ -59,6 +72,21 @@ export function pushedCommits(input, cwd) {
   return [...new Set(input.trim().split('\n').map(line => line.trim().split(/\s+/)[1]).filter(id => !zeroObjectId.test(id)))]
 }
 
+function ciRequiresApplicationChecks(eventName, event, cwd) {
+  if (eventName === 'push') {
+    if (!event.ref?.startsWith('refs/heads/')) return true
+    return !onlyDocsMarkdown(pushedFiles(`${event.ref} ${event.after} ${event.ref} ${event.before}\n`, cwd))
+  }
+  if (eventName === 'pull_request') {
+    const base = event.pull_request?.base?.sha
+    const head = event.pull_request?.head?.sha
+    if (![base, head].every(id => /^[a-f0-9]{40,64}$/.test(id ?? ''))) throw new Error('Invalid pull-request commit IDs.')
+    if ([base, head].some(id => spawnSync('git', ['cat-file', '-e', `${id}^{commit}`], { cwd, stdio: 'ignore' }).status !== 0)) return true
+    return !onlyDocsMarkdown(paths(git(['diff', '--name-only', '--no-renames', '-z', `${base}...${head}`, '--'], cwd)))
+  }
+  return true
+}
+
 function run(command, args, cwd) {
   console.log(`\n> ${command === process.execPath ? 'node' : command} ${args.join(' ')}`)
   const result = spawnSync(command, args, { cwd, stdio: 'inherit' })
@@ -66,11 +94,19 @@ function run(command, args, cwd) {
   if (result.status !== 0) throw new Error(`Check failed (${result.signal ?? result.status}).`)
 }
 
-function scanSecrets(cwd, staged = false) {
+function scanSecrets(cwd, staged = false, revisions = []) {
   const executable = process.platform === 'win32' ? 'gitleaks.exe' : 'gitleaks'
   const binary = resolve(cwd, '.tools', `gitleaks-${gitleaks.version}`, executable)
   if (!existsSync(binary)) throw new Error('Gitleaks is missing. Run npm run hooks:install from the repository root.')
-  run(binary, ['git', '--redact', '--no-banner', ...(staged ? ['--pre-commit', '--staged'] : [])], cwd)
+  run(binary, ['git', '--redact', '--no-banner', ...(staged ? ['--pre-commit', '--staged'] : []),
+    ...(revisions.length ? ['--log-opts', revisions.join(' ')] : [])], cwd)
+}
+
+function committedHygiene(cwd, revisions, { allRefs = false } = {}) {
+  // Whitespace diagnostics print offending lines, so redact/reject secrets first.
+  scanSecrets(cwd, false, allRefs ? [] : revisions)
+  const emptyTree = git(['hash-object', '-t', 'tree', '--stdin'], cwd, '').trim()
+  for (const revision of revisions) run('git', ['diff', '--check', emptyTree, revision, ...maintainedFiles], cwd)
 }
 
 function frontend(cwd) {
@@ -107,6 +143,7 @@ function stagedChecks(cwd) {
   scanSecrets(cwd, true)
   // Git checks introduced whitespace errors and conflict markers against the index.
   run('git', ['diff', '--cached', '--check', ...maintainedFiles], cwd)
+  if (onlyDocsMarkdown(changed)) return
   const present = paths(git(['diff', '--cached', '--name-only', '--no-renames', '--diff-filter=ACMT', '-z'], cwd))
   const frontendConfigChanged = changed.some(file => file.startsWith(`${webDirectory}/`)
     && /(?:package(?:-lock)?\.json|\.oxlintrc\.json|tsconfig[^/]*\.json)$/.test(file))
@@ -129,7 +166,12 @@ export function main(mode, cwd = process.cwd(), input = '') {
       stagedChecks(cwd)
       break
     case 'pre-push': {
-      const areas = affectedAreas(pushedFiles(input, cwd))
+      const files = pushedFiles(input, cwd)
+      if (onlyDocsMarkdown(files)) {
+        committedHygiene(cwd, pushedCommits(input, cwd))
+        break
+      }
+      const areas = affectedAreas(files)
       if (areas.backend || areas.frontend) {
         console.log('Build/lint checks inspect the working tree; coverage compares each pushed commit against fresh origin/main.')
         run(process.execPath, ['--test', 'scripts/checks.test.mjs', 'scripts/coverage.test.mjs'], cwd)
@@ -150,13 +192,17 @@ export function main(mode, cwd = process.cwd(), input = '') {
       frontend(cwd)
       break
     case 'hygiene': {
-      const emptyTree = git(['hash-object', '-t', 'tree', '--stdin'], cwd, '').trim()
-      run('git', ['diff', '--check', emptyTree, 'HEAD', ...maintainedFiles], cwd)
-      scanSecrets(cwd)
+      committedHygiene(cwd, ['HEAD'], { allRefs: true })
+      break
+    }
+    case 'ci-scope': {
+      if (!process.env.GITHUB_EVENT_PATH) throw new Error('GITHUB_EVENT_PATH is required for CI scope selection.')
+      const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
+      console.log(`run_application_checks=${ciRequiresApplicationChecks(process.env.GITHUB_EVENT_NAME, event, cwd)}`)
       break
     }
     default:
-      throw new Error('Choose pre-commit, pre-push, backend, frontend, or hygiene.')
+      throw new Error('Choose pre-commit, pre-push, backend, frontend, hygiene, or ci-scope.')
   }
 }
 
