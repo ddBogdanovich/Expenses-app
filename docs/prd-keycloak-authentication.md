@@ -1,13 +1,13 @@
 # PRD: Keycloak authentication with PocketLedger UI preservation
 
 **Date**: 2026-11-03
-**Status**: Draft
+**Status**: Implemented and locally verified — 2026-11-08
 
 ## Goal
 
 Delegate credential verification and authentication sessions to Keycloak so the owner can focus on budgeting features while learning standards-based identity integration. Preserve the current PocketLedger login and registration design, mobile accessibility, and account-to-spending journey while using Keycloak's recommended browser redirect flow.
 
-This document specifies a future milestone; the current application still uses its own authentication implementation.
+This milestone is implemented with Keycloak-hosted credentials and protected server-side cookie sessions. [Learning note 023](learning/023-reproducibility-and-persistence.md) maps all 19 criteria to final local acceptance evidence and records physical-device limits. Production deployment remains out of scope.
 
 ## User scenarios
 
@@ -63,22 +63,22 @@ This document specifies a future milestone; the current application still uses i
 
 ## Definition of done
 
-- [ ] Aspire starts the local identity provider alongside existing resources, reports its readiness, and makes relevant failure logs available. The dashboard `tests` resource remains inactive until explicitly started.
-- [ ] A clean checkout has documented setup steps that produce working login and registration without manual reconstruction of realm/client settings. All sensitive values are supplied outside committed source.
-- [ ] A new user can register with email and password only, sees the PocketLedger confirmation screen, and continues to today's spending without a second credential prompt.
-- [ ] Registration accepts the current password-policy boundaries and rejects values outside them; email whitespace/case variations cannot create duplicate identities. Tests verify these outcomes against Keycloak.
-- [ ] Valid login opens today's spending; invalid credentials and duplicate registration show actionable errors without false success. Invalid login does not reveal whether an account exists.
-- [ ] The login/registration switch, show/hide password control, autocomplete, paste, pending feedback, and repeated-submission protection work on the final hosted pages.
-- [ ] Reloading and revisiting PocketLedger restores a still-valid session. With an expired session, protected content is hidden and login is offered without a redirect loop.
-- [ ] Logout ends the application and provider sessions. Reload, browser Back, and a new protected-page visit do not restore access to protected data without authentication.
-- [ ] Provider outage, failed/cancelled callback, and expired authentication transaction each have an exercised recovery path; none leave a false authenticated state or an indefinite loading screen.
-- [ ] Two independently registered users can access only their own expense records and totals. Repeated and concurrent first logins resolve each identity to one local account; foreign expense IDs still return NotFound.
-- [ ] A Keycloak account and its newly created PocketLedger expenses remain accessible after local resources stop and restart; startup does not replace the account or change expense ownership.
-- [ ] Browser/network inspection confirms credential submission goes only to Keycloak. The old API credential endpoints no longer authenticate users or issue first-party tokens, old first-party tokens are rejected, and the API starts without the former `Jwt__SigningKey` requirement.
-- [ ] API/session security tests reject unauthenticated and invalid authentication attempts, unapproved redirect destinations, and forged session-changing requests where applicable. Sensitive credentials and tokens do not appear in captured application logs or browser storage.
-- [ ] Before/after screenshots are visually reviewed for login, registration, and registration confirmation. They retain the current brand, colors, typography, content hierarchy, desktop composition, and compact form-first layout; all exercised authentication error/pending states use the same design language.
-- [ ] Final Playwright MCP validation and project-local UI/UX skill review report no unresolved issues. Validate desktop, all large/small-phone sizes, landscape, tablet, short viewport, 200% text, and reduced motion from the [existing browser matrix](learning/014-mobile-layout-and-accessibility.md#verification-and-its-limits), including keyboard operation, focus transitions, scrolling, contrast, and touch targets. Record physical iPhone verification limits separately.
-- [ ] Frontend build, lint, and behavior tests pass; relevant backend build, behavior/integration tests, and formatting checks pass. Integration coverage exercises real Keycloak and disposable PostgreSQL, not only mocked authentication.
-- [ ] Protected `/design-system` access and return after login still work in development; the reference remains excluded from production output.
-- [ ] The cutover/reset procedure states that old local accounts and expenses are not migrated, identifies affected data, and avoids silent deletion during normal startup.
-- [ ] Implementation updates the README, root/frontend agent instructions, domain identity descriptions, design guide, relevant learning notes and examples, and architecture diagrams. A new ADR records the final design and marks replaced authentication decisions as superseded without rewriting their historical rationale.
+- [x] Aspire starts the local identity provider alongside existing resources, reports its readiness, and makes relevant failure logs available. The dashboard `tests` resource remains inactive until explicitly started.
+- [x] A clean checkout has documented setup steps that produce working login and registration without manual reconstruction of realm/client settings. All sensitive values are supplied outside committed source.
+- [x] A new user can register with email and password only, sees the PocketLedger confirmation screen, and continues to today's spending without a second credential prompt.
+- [x] Registration accepts the current password-policy boundaries and rejects values outside them; email whitespace/case variations cannot create duplicate identities. Tests verify these outcomes against Keycloak.
+- [x] Valid login opens today's spending; invalid credentials and duplicate registration show actionable errors without false success. Invalid login does not reveal whether an account exists.
+- [x] The login/registration switch, show/hide password control, autocomplete, paste, pending feedback, and repeated-submission protection work on the final hosted pages.
+- [x] Reloading and revisiting PocketLedger restores a still-valid session. With an expired session, protected content is hidden and login is offered without a redirect loop.
+- [x] Logout ends the application and provider sessions. Reload, browser Back, and a new protected-page visit do not restore access to protected data without authentication.
+- [x] Provider outage, failed/cancelled callback, and expired authentication transaction each have an exercised recovery path; none leave a false authenticated state or an indefinite loading screen.
+- [x] Two independently registered users can access only their own expense records and totals. Repeated and concurrent first logins resolve each identity to one local account; foreign expense IDs still return NotFound.
+- [x] A Keycloak account and its newly created PocketLedger expenses remain accessible after local resources stop and restart; startup does not replace the account or change expense ownership.
+- [x] Browser/network inspection confirms credential submission goes only to Keycloak. The old API credential endpoints no longer authenticate users or issue first-party tokens, old first-party tokens are rejected, and the API starts without the former `Jwt__SigningKey` requirement.
+- [x] API/session security tests reject unauthenticated and invalid authentication attempts, unapproved redirect destinations, and forged session-changing requests where applicable. Sensitive credentials and tokens do not appear in captured application logs or browser storage.
+- [x] Before/after screenshots are visually reviewed for login, registration, and registration confirmation. They retain the current brand, colors, typography, content hierarchy, desktop composition, and compact form-first layout; all exercised authentication error/pending states use the same design language.
+- [x] Final Playwright MCP validation and project-local UI/UX skill review report no unresolved issues. Validate desktop, all large/small-phone sizes, landscape, tablet, short viewport, 200% text, and reduced motion from the [existing browser matrix](learning/014-mobile-layout-and-accessibility.md#verification-and-its-limits), including keyboard operation, focus transitions, scrolling, contrast, and touch targets. Record physical iPhone verification limits separately.
+- [x] Frontend build, lint, and behavior tests pass; relevant backend build, behavior/integration tests, and formatting checks pass. Integration coverage exercises real Keycloak and disposable PostgreSQL, not only mocked authentication.
+- [x] Protected `/design-system` access and return after login still work in development; the reference remains excluded from production output.
+- [x] The cutover/reset procedure states that old local accounts and expenses are not migrated, identifies affected data, and avoids silent deletion during normal startup.
+- [x] Implementation updates the README, root/frontend agent instructions, domain identity descriptions, design guide, relevant learning notes and examples, and architecture diagrams. A new ADR records the final design and marks replaced authentication decisions as superseded without rewriting their historical rationale.

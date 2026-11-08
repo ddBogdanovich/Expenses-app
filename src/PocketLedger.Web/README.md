@@ -37,3 +37,5 @@ Hosted templates live under `infra/keycloak/themes/pocketledger`, consume produc
 ## Coverage
 
 `test:coverage` uses the repository's shared Vitest V8 scope and writes HTML/LCOV/JSON under `.artifacts/coverage/current/frontend` at the repository root. Unimported implementation files and development pages count; test/spec files and type declarations do not. The root pre-push/CI gate compares exact committed coverage against main and rejects line or branch degradation. See [learning note 020](../../docs/learning/020-coverage-and-regression-gates.md).
+
+Final local milestone acceptance is recorded in [learning note 023](../../docs/learning/023-reproducibility-and-persistence.md): the integrated hosted/default journey, complete viewport/text matrix, failure recovery, ownership persistence and production-reference exclusion. Physical iPhone Safari/keyboard/autofill/VoiceOver remain separately stated limits.
